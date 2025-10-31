@@ -1,0 +1,75 @@
+[package]
+name = "shebe"
+version = "0.4.0"
+edition = "2021"
+rust-version = "1.80"
+authors = ["RHOBIMD HEALTH"]
+description = "BM25-based code search engine with MCP integration for Claude Code"
+license = "Apache-2.0"
+repository = "https://gitlab.com/rhobimd-oss/shebe"
+homepage = "https://gitlab.com/rhobimd-oss/shebe"
+documentation = "https://docs.rs/shebe"
+keywords = ["search", "bm25", "rag", "code-search", "mcp"]
+categories = ["command-line-utilities", "development-tools"]
+
+# Binary targets
+[[bin]]
+name = "shebe-mcp"
+path = "src/bin/shebe_mcp.rs"
+
+[dependencies]
+# Web Framework (Axum + Tower)
+axum = "0.7"
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+
+# Search Engine
+tantivy = "0.22"
+
+# Async Runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# File Walking
+walkdir = "2"
+glob = "0.3"
+regex = "1"
+
+# Error Handling
+thiserror = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [
+    "json",
+    "env-filter",
+] }
+
+# Configuration
+toml = "0.8"
+
+# Timestamps
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1.89"
+
+# XDG Directory Support
+dirs = "5.0"
+
+[dev-dependencies]
+# Testing
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3"
+serial_test = "3.2"
+
+[[bench]]
+name = "performance"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

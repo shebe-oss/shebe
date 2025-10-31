@@ -1,0 +1,64 @@
+# Shebe Configuration File
+#
+# This is a template configuration file for Shebe.
+# Copy to ~/.config/shebe/config.toml and customize as needed.
+#
+# Most users don't need a config file - defaults work well.
+# See CONFIGURATION.md for detailed documentation.
+
+# Server configuration (HTTP mode only, not used by shebe-mcp)
+[server]
+# host = "127.0.0.1"
+# port = 3000
+# log_level = "info"
+
+# Indexing configuration
+[indexing]
+# chunk_size = 512                # Unicode characters per chunk
+# overlap = 64                    # Character overlap between chunks
+# max_file_size_mb = 10           # Skip files larger than this (MB)
+
+# File patterns (glob syntax)
+# include_patterns = [
+#     "*.rs",
+#     "*.toml",
+#     "*.md",
+#     "*.txt",
+#     "*.php",
+#     "*.js",
+#     "*.ts",
+#     "*.py",
+#     "*.go",
+#     "*.java",
+#     "*.c",
+#     "*.cpp",
+#     "*.h",
+# ]
+
+# exclude_patterns = [
+#     "**/node_modules/**",
+#     "**/target/**",
+#     "**/vendor/**",
+#     "**/.git/**",
+#     "**/build/**",
+#     "**/__pycache__/**",
+#     "**/dist/**",
+#     "**/.next/**",
+# ]
+
+# Storage configuration
+[storage]
+# index_dir = "~/.local/share/shebe/sessions/"  # XDG data directory (default)
+# Or use custom path:
+# index_dir = "/custom/path/to/data"
+
+# Search configuration
+[search]
+# default_k = 10                  # Default number of results
+# max_k = 100                     # Maximum results per query
+# max_query_length = 500          # Maximum query string length
+
+# Resource limits
+[limits]
+# max_concurrent_indexes = 1      # Concurrent indexing operations
+# request_timeout_sec = 300       # Request timeout (seconds)
