@@ -16,8 +16,12 @@ tmp.*
 db-data
 pgadmin-data
 sample-data
+dev-docs
 data
+.claude
 .serena
+.mcp.json
+CLAUDE.md
 
 # Rust
 target/
