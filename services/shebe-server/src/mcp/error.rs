@@ -43,6 +43,23 @@ impl From<crate::core::error::ShebeError> for McpError {
             }
             ShebeError::InvalidPath(p) => McpError::InvalidParams(format!("Invalid path: {p}")),
             ShebeError::InvalidQuery(s) => McpError::InvalidParams(format!("Invalid query: {s}")),
+            ShebeError::InvalidQueryField {
+                field,
+                message,
+                valid_fields,
+                suggestion,
+            } => {
+                let mut msg = format!(
+                    "Invalid query: Unknown field '{}'.\nValid fields: {}",
+                    field,
+                    valid_fields.join(", ")
+                );
+                if let Some(hint) = suggestion {
+                    msg.push_str(&format!("\nHint: Did you mean '{hint}'?"));
+                }
+                msg.push_str(&format!("\nDetails: {message}"));
+                McpError::InvalidParams(msg)
+            }
             ShebeError::ConfigError(s) => {
                 McpError::InvalidParams(format!("Configuration error: {s}"))
             }

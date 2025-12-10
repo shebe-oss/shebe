@@ -288,7 +288,7 @@ struct ConfigComparison {
 mod tests {
     use super::*;
     use crate::core::config::Config;
-    use crate::core::storage::SessionConfig;
+
     use tempfile::TempDir;
 
     async fn setup_test_handler() -> (ReindexSessionHandler, TempDir) {

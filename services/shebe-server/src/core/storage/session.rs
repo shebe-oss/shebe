@@ -128,11 +128,13 @@ impl StorageManager {
         let metadata = self.get_session_metadata(session_id)?;
         if metadata.schema_version < SCHEMA_VERSION {
             return Err(ShebeError::InvalidSession(format!(
-                "Session '{}' uses old schema version {} (current: v{}). \
-                 Missing fields: repository_path, last_indexed_at, patterns. \
-                 Please re-index this session: \
-                 mcp__shebe__index_repository(path=\"/path/to/repo\", session=\"{}\")",
-                session_id, metadata.schema_version, SCHEMA_VERSION, session_id
+                "Session '{}' uses schema v{} but current version is v{}.\n\
+                 Repository path: {}\n\
+                 Re-index to upgrade: use upgrade_session tool or index_repository with force=true.",
+                session_id,
+                metadata.schema_version,
+                SCHEMA_VERSION,
+                metadata.repository_path.display()
             )));
         }
 
@@ -853,12 +855,17 @@ mod tests {
         let err = result.unwrap_err();
         let err_msg = format!("{:?}", err);
         assert!(
-            err_msg.contains("old schema version"),
+            err_msg.contains("schema v1") && err_msg.contains("current version"),
             "Error should mention schema version: {}",
             err_msg
         );
         assert!(
-            err_msg.contains("Please re-index") || err_msg.contains("Please reindex"),
+            err_msg.contains("Repository path:"),
+            "Error should include repository path: {}",
+            err_msg
+        );
+        assert!(
+            err_msg.contains("Re-index to upgrade"),
             "Error should suggest reindexing: {}",
             err_msg
         );

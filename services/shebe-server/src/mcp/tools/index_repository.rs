@@ -4,7 +4,9 @@
 //! directly from Claude Code without requiring the HTTP server.
 
 use super::handler::{text_content, McpToolHandler};
+use super::helpers::format_time_ago;
 use crate::core::services::Services;
+use crate::core::storage::SCHEMA_VERSION;
 use crate::mcp::error::McpError;
 use crate::mcp::protocol::ToolResult;
 use crate::mcp::protocol::ToolSchema;
@@ -49,8 +51,8 @@ struct IndexRequest {
     /// Overlap between chunks (optional, default: 64)
     #[serde(default = "default_overlap")]
     overlap: usize,
-    /// Force re-indexing if session exists (optional, default: false)
-    #[serde(default)]
+    /// Force re-indexing if session exists (optional, default: true)
+    #[serde(default = "default_force")]
     force: bool,
 }
 
@@ -60,6 +62,10 @@ fn default_chunk_size() -> usize {
 
 fn default_overlap() -> usize {
     64
+}
+
+fn default_force() -> bool {
+    true
 }
 
 /// Handler for index_repository MCP tool
@@ -223,8 +229,9 @@ impl McpToolHandler for IndexRepositoryHandler {
                     },
                     "force": {
                         "type": "boolean",
-                        "default": false,
-                        "description": "Force re-indexing even if session already exists"
+                        "default": true,
+                        "description": "Re-index even if session exists. Default is true (always re-indexes). \
+                                       Set to false to skip if session exists."
                     }
                 },
                 "required": ["path", "session"],
@@ -248,9 +255,31 @@ impl McpToolHandler for IndexRepositoryHandler {
         let session_exists = self.services.storage.session_exists(&req.session);
 
         if session_exists && !req.force {
+            // Get metadata for enhanced error message
+            let metadata = self
+                .services
+                .storage
+                .get_session_metadata(&req.session)
+                .map_err(McpError::from)?;
+
+            let schema_status = if metadata.schema_version == SCHEMA_VERSION {
+                "current"
+            } else {
+                "outdated"
+            };
+
             return Err(McpError::InvalidParams(format!(
-                "Session '{}' already exists. Use force=true to re-index.",
-                req.session
+                "Session '{}' already exists.\n\
+                 - Last indexed: {} ({})\n\
+                 - Files indexed: {}\n\
+                 - Schema version: v{} ({})\n\
+                 Use force=true to re-index, or use existing session for search.",
+                req.session,
+                metadata.last_indexed_at.format("%Y-%m-%d %H:%M UTC"),
+                format_time_ago(metadata.last_indexed_at),
+                metadata.files_indexed,
+                metadata.schema_version,
+                schema_status
             )));
         }
 

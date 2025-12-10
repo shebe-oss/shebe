@@ -44,6 +44,9 @@ test-coverage:
 	@echo "Running tests with coverage in shebe-dev container..."
 	$(DOCKER_RUN) cargo tarpaulin --all-features --workspace --out Xml --output-dir . --fail-under 70
 
+fix:
+	$(DOCKER_RUN) cargo fix --package shebe --verbose --allow-no-vcs
+
 fmt:
 	@echo "Formatting code in shebe-dev container..."
 	$(DOCKER_RUN) cargo fmt
@@ -54,7 +57,7 @@ fmt-check:
 
 clippy:
 	@echo "Running clippy in shebe-dev container..."
-	$(DOCKER_RUN) cargo clippy -- -D warnings
+	$(DOCKER_RUN) cargo clippy --no-deps -- -D warnings
 
 check:
 	@echo "Running cargo check in shebe-dev container..."

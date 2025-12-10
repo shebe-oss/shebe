@@ -2,6 +2,7 @@
 
 use super::handler::{text_content, McpToolHandler};
 use super::helpers::{detect_language, truncate_text};
+use crate::core::search::{preprocess_query, validate_query_fields};
 use crate::core::services::Services;
 use crate::core::types::SearchRequest;
 use crate::mcp::error::McpError;
@@ -97,8 +98,13 @@ impl McpToolHandler for SearchCodeHandler {
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search query. Examples: 'database connection', '\"patient login\"' (phrase), \
-                                       'auth AND (session OR token)' (boolean)",
+                        "description": "Search query. Auto-preprocessing handles common patterns: \
+                                       (1) Curly braces escaped ({id} -> \\{id\\}), \
+                                       (2) URL paths auto-quoted (/users/{id} -> \"/users/\\{id\\}\"), \
+                                       (3) Multi-colon patterns auto-quoted (pkg:scope:name -> \"pkg:scope:name\"). \
+                                       Examples: 'database connection', '\"exact phrase\"', \
+                                       'auth AND (session OR token)' (boolean). \
+                                       Valid field prefixes: content, file_path.",
                         "minLength": 1,
                         "maxLength": 500
                     },
@@ -113,6 +119,13 @@ impl McpToolHandler for SearchCodeHandler {
                         "default": 10,
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "literal": {
+                        "type": "boolean",
+                        "description": "If true, search for exact string (no query parsing). All special \
+                                       characters are escaped. Use for searching code with special syntax \
+                                       like 'fmt.Printf(\"%s\")' or 'array[0]'. Default: false.",
+                        "default": false
                     }
                 },
                 "required": ["query", "session"]
@@ -127,6 +140,8 @@ impl McpToolHandler for SearchCodeHandler {
             session: String,
             #[serde(default = "default_k")]
             k: usize,
+            #[serde(default)]
+            literal: bool,
         }
         fn default_k() -> usize {
             10
@@ -144,9 +159,17 @@ impl McpToolHandler for SearchCodeHandler {
             return Err(McpError::InvalidParams("k cannot exceed 100".to_string()));
         }
 
+        // Skip field validation in literal mode (all colons are escaped anyway)
+        if !args.literal {
+            validate_query_fields(&args.query).map_err(McpError::from)?;
+        }
+
+        // Preprocess query for Tantivy compatibility
+        let processed_query = preprocess_query(&args.query, args.literal);
+
         // Create Shebe search request
         let request = SearchRequest {
-            query: args.query,
+            query: processed_query,
             session: args.session,
             k: Some(args.k),
         };
@@ -361,5 +384,54 @@ mod tests {
 
         assert!(output.contains("Found 0 results"));
         assert!(output.contains("No results found"));
+    }
+
+    #[tokio::test]
+    async fn test_search_code_literal_mode() {
+        let (handler, _temp) = setup_test_handler().await;
+
+        // In literal mode, "file:" should NOT be flagged as invalid field prefix
+        // (field validation is skipped). The search will fail with session-not-found,
+        // but that's fine - we just need to verify it's NOT a field validation error.
+        let args = json!({
+            "query": "file:test",
+            "session": "nonexistent-session",
+            "literal": true
+        });
+
+        let result = handler.execute(args).await;
+        // It should fail, but NOT due to field validation
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+
+        // Verify it's NOT an InvalidParams error (which would indicate field validation)
+        // In literal mode, field validation is skipped, so we should get a session-not-found error
+        assert!(
+            matches!(err, McpError::ToolError(_, _)),
+            "Expected ToolError (session not found), got: {:?}",
+            err
+        );
+    }
+
+    #[tokio::test]
+    async fn test_search_code_literal_mode_default_false() {
+        let (handler, _temp) = setup_test_handler().await;
+
+        // Without literal=true, "file:" should be flagged as invalid field
+        // No need to create a session - the field validation happens before session lookup
+        let args = json!({
+            "query": "file:test",
+            "session": "any-session"
+        });
+
+        let result = handler.execute(args).await;
+        assert!(result.is_err());
+        // Verify it's a field validation error (converted to InvalidParams)
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, McpError::InvalidParams(_)),
+            "Expected InvalidParams from field validation, got: {:?}",
+            err
+        );
     }
 }

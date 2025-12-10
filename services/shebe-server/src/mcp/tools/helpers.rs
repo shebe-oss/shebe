@@ -1,5 +1,49 @@
 //! Helper functions for MCP tools
 
+use chrono::{DateTime, Utc};
+
+/// Format a timestamp as human-readable relative time.
+///
+/// # Examples
+///
+/// - "1 day ago"
+/// - "3 hours ago"
+/// - "45 minutes ago"
+/// - "just now"
+pub fn format_time_ago(timestamp: DateTime<Utc>) -> String {
+    let now = Utc::now();
+    let duration = now.signed_duration_since(timestamp);
+
+    let days = duration.num_days();
+    if days > 0 {
+        return if days == 1 {
+            "1 day ago".to_string()
+        } else {
+            format!("{days} days ago")
+        };
+    }
+
+    let hours = duration.num_hours();
+    if hours > 0 {
+        return if hours == 1 {
+            "1 hour ago".to_string()
+        } else {
+            format!("{hours} hours ago")
+        };
+    }
+
+    let minutes = duration.num_minutes();
+    if minutes > 0 {
+        return if minutes == 1 {
+            "1 minute ago".to_string()
+        } else {
+            format!("{minutes} minutes ago")
+        };
+    }
+
+    "just now".to_string()
+}
+
 /// Format bytes as human-readable size
 pub fn format_bytes(bytes: u64) -> String {
     const KB: u64 = 1024;
@@ -165,5 +209,53 @@ mod tests {
         let result = truncate_text(text, 7);
         assert!(result.chars().count() > 7); // Includes truncation message
         assert!(result.contains("Hello 世"));
+    }
+
+    #[test]
+    fn test_format_time_ago_days() {
+        use chrono::Duration;
+        let timestamp = Utc::now() - Duration::days(3);
+        assert_eq!(format_time_ago(timestamp), "3 days ago");
+    }
+
+    #[test]
+    fn test_format_time_ago_one_day() {
+        use chrono::Duration;
+        let timestamp = Utc::now() - Duration::days(1);
+        assert_eq!(format_time_ago(timestamp), "1 day ago");
+    }
+
+    #[test]
+    fn test_format_time_ago_hours() {
+        use chrono::Duration;
+        let timestamp = Utc::now() - Duration::hours(5);
+        assert_eq!(format_time_ago(timestamp), "5 hours ago");
+    }
+
+    #[test]
+    fn test_format_time_ago_one_hour() {
+        use chrono::Duration;
+        let timestamp = Utc::now() - Duration::hours(1);
+        assert_eq!(format_time_ago(timestamp), "1 hour ago");
+    }
+
+    #[test]
+    fn test_format_time_ago_minutes() {
+        use chrono::Duration;
+        let timestamp = Utc::now() - Duration::minutes(45);
+        assert_eq!(format_time_ago(timestamp), "45 minutes ago");
+    }
+
+    #[test]
+    fn test_format_time_ago_one_minute() {
+        use chrono::Duration;
+        let timestamp = Utc::now() - Duration::minutes(1);
+        assert_eq!(format_time_ago(timestamp), "1 minute ago");
+    }
+
+    #[test]
+    fn test_format_time_ago_just_now() {
+        let timestamp = Utc::now();
+        assert_eq!(format_time_ago(timestamp), "just now");
     }
 }

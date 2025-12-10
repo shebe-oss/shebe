@@ -32,3 +32,5 @@ pub use session::{SessionConfig, SessionMetadata, StorageManager};
 // Note: Used in shebe-mcp binary, not in lib tests
 #[allow(unused_imports)]
 pub use validator::{MetadataValidator, ValidationReport};
+// Re-export schema version for use in MCP tools
+pub use tantivy::SCHEMA_VERSION;

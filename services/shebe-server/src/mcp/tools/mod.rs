@@ -18,6 +18,7 @@ pub mod registry;
 pub mod reindex_session;
 pub mod search_code;
 pub mod show_shebe_config;
+pub mod upgrade_session;
 
 pub use delete_session::DeleteSessionHandler;
 pub use find_file::FindFileHandler;
@@ -34,3 +35,4 @@ pub use registry::ToolRegistry;
 pub use reindex_session::ReindexSessionHandler;
 pub use search_code::SearchCodeHandler;
 pub use show_shebe_config::ShowShebeConfigHandler;
+pub use upgrade_session::UpgradeSessionHandler;
