@@ -6,7 +6,9 @@
 # Uses CI_JOB_TOKEN for authentication (no manual token needed).
 #
 # Usage:
-#   ./scripts/ci-release.sh
+#   ./scripts/ci-release.sh              # Run in GitLab CI
+#   ./scripts/ci-release.sh --preview    # Local preview (no API calls)
+#   ./scripts/ci-release.sh --preview v0.5.0  # Preview specific version
 #
 # Required environment variables (GitLab CI predefined):
 #   CI_COMMIT_TAG       - Git tag (e.g., v0.4.1)
@@ -27,6 +29,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Configuration
 RELEASE_DIR="${RELEASE_DIR:-releases}"
+PREVIEW_MODE=false
 
 #----------------------------------------------------------
 # Functions
@@ -41,8 +44,56 @@ error() {
     exit 1
 }
 
+usage() {
+    echo "Usage: $0 [--preview [VERSION]]"
+    echo ""
+    echo "Options:"
+    echo "  --preview [VERSION]  Preview release notes locally (no API calls)"
+    echo "                       VERSION defaults to next version from VERSION file"
+    echo ""
+    echo "Examples:"
+    echo "  $0                   # Run in GitLab CI (requires CI variables)"
+    echo "  $0 --preview         # Preview with version from VERSION file"
+    echo "  $0 --preview v0.5.0  # Preview specific version"
+    exit 0
+}
+
+setup_preview_environment() {
+    local version="${1:-}"
+
+    # Get version from VERSION file if not provided
+    if [[ -z "${version}" ]]; then
+        local version_file="${REPO_ROOT}/services/shebe-server/VERSION"
+        if [[ -f "${version_file}" ]]; then
+            version="v$(cat "${version_file}")"
+        else
+            error "No version provided and VERSION file not found"
+        fi
+    fi
+
+    # Ensure version starts with 'v'
+    if [[ "${version}" != v* ]]; then
+        version="v${version}"
+    fi
+
+    # Set mock CI variables for preview
+    export CI_COMMIT_TAG="${version}"
+    export CI_PROJECT_URL="https://gitlab.com/rhobimd-oss/shebe"
+    export CI_PROJECT_ID="preview"
+    export CI_API_V4_URL="https://gitlab.com/api/v4"
+    export CI_COMMIT_SHA="$(git rev-parse HEAD 2>/dev/null || echo "preview")"
+    export CI_COMMIT_SHORT_SHA="$(git rev-parse --short HEAD 2>/dev/null || echo "preview")"
+
+    log "Preview mode enabled for ${CI_COMMIT_TAG}"
+}
+
 validate_environment() {
     log "Validating environment..."
+
+    if [[ "${PREVIEW_MODE}" == "true" ]]; then
+        log "Preview mode - skipping CI variable validation"
+        return 0
+    fi
 
     if [[ -z "${CI_COMMIT_TAG:-}" ]]; then
         error "CI_COMMIT_TAG is not set. This script should only run on Git tags."
@@ -73,8 +124,9 @@ get_previous_tag() {
     git tag --sort=-version:refname | grep -v "^${CI_COMMIT_TAG}$" | head -1 || echo ""
 }
 
-# Extract changelog section for a specific version from CHANGELOG.md
-# Falls back to git log if version not found in CHANGELOG.md
+# Extract changelog section from CHANGELOG.md for the release.
+# Grabs the [Unreleased] section and rewrites the header with the version being released.
+# Falls back to git log if [Unreleased] section is empty or not found.
 extract_changelog_section() {
     local version="$1"
     local changelog_file="${REPO_ROOT}/CHANGELOG.md"
@@ -83,26 +135,27 @@ extract_changelog_section() {
     log "Extracting changelog for version ${version}..."
 
     if [[ -f "${changelog_file}" ]]; then
-        # Extract section between [version] and the next ## [ or end of file
-        # Using awk to extract the section for this version
+        # Extract [Unreleased] section (everything between ## [Unreleased] and next ## [)
         local section
-        section=$(awk -v ver="${version}" '
-            /^## \[/ {
-                if (found) exit
-                if (index($0, "[" ver "]") > 0) found=1
-            }
+        section=$(awk '
+            /^## \[Unreleased\]/ { found=1; next }
+            /^## \[/ { if (found) exit }
             found { print }
         ' "${changelog_file}")
 
-        if [[ -n "${section}" ]]; then
-            echo "${section}" > "${output_file}"
-            log "Extracted changelog section from CHANGELOG.md"
+        # Check if we got meaningful content (not just whitespace)
+        if [[ -n "$(echo "${section}" | grep -v '^[[:space:]]*$')" ]]; then
+            {
+                echo "## [${version}] - $(date -u +"%Y-%m-%d")"
+                echo "${section}"
+            } > "${output_file}"
+            log "Extracted [Unreleased] section from CHANGELOG.md"
             return 0
         fi
     fi
 
     # Fallback: generate from git log
-    log "Version not found in CHANGELOG.md, generating from git history..."
+    log "[Unreleased] section empty or not found, generating from git history..."
     local previous_tag
     previous_tag=$(get_previous_tag)
 
@@ -227,6 +280,29 @@ create_gitlab_release() {
 #----------------------------------------------------------
 
 main() {
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --preview)
+                PREVIEW_MODE=true
+                shift
+                # Check if next arg is a version (not another flag)
+                if [[ $# -gt 0 && "$1" != -* ]]; then
+                    setup_preview_environment "$1"
+                    shift
+                else
+                    setup_preview_environment ""
+                fi
+                ;;
+            --help|-h)
+                usage
+                ;;
+            *)
+                error "Unknown argument: $1"
+                ;;
+        esac
+    done
+
     log "Starting release process"
     log "Tag: ${CI_COMMIT_TAG:-<not set>}"
 
@@ -246,10 +322,22 @@ main() {
     # Generate release notes (includes changelog section)
     generate_release_notes "${version}"
 
-    # Create GitLab release
-    create_gitlab_release "${version}"
-
-    log "Release process complete"
+    if [[ "${PREVIEW_MODE}" == "true" ]]; then
+        log "Preview mode - skipping GitLab API call"
+        echo ""
+        echo "================================================================================"
+        echo "RELEASE NOTES PREVIEW"
+        echo "================================================================================"
+        cat "${REPO_ROOT}/RELEASE_NOTES.md"
+        echo "================================================================================"
+        log "Preview complete. Files generated:"
+        log "  - ${REPO_ROOT}/RELEASE_NOTES.md"
+        log "  - ${REPO_ROOT}/RELEASE_CHANGELOG.md"
+    else
+        # Create GitLab release
+        create_gitlab_release "${version}"
+        log "Release process complete"
+    fi
 }
 
 main "$@"

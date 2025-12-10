@@ -57,9 +57,11 @@ dummy:job:
   stage: test
   image: registry.gitlab.com/rhobimd-oss/cicd/alpine:20251111-b3.13-alpine3.22-bc832d850
   script:
-    - /bin/true  # Does nothing, exits with status 0
+    - time          # anything that exits with status 0
   interruptible: true
   timeout: 15s
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
   before_script: []  # Disable any global before_script
   after_script: []   # Disable any global after_script
   cache: {}          # Disable caching
@@ -85,14 +87,17 @@ test:shebe:
       echo "=== Format check ==="
       cargo fmt -- --check --verbose
 
-      echo "=== Clippy ==="
-      cargo clippy -- -D warnings
+      echo "=== Build (compile dependencies) ==="
+      cargo check --all-features --workspace
+
+      echo "=== Clippy (shebe only) ==="
+      cargo clippy --no-deps -- -D warnings
 
       echo "=== Tests ==="
       cargo nextest run --all-features --workspace
 
       echo "=== Coverage ==="
-      cargo tarpaulin --all-features --workspace --out Xml --output-dir . --fail-under 70
+      cargo tarpaulin --skip-clean --all-features --workspace --out Xml --output-dir . --fail-under 70
   interruptible: true
   timeout: 30m
   rules: *shebe-rules

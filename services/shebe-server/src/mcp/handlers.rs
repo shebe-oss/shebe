@@ -7,7 +7,7 @@ use crate::mcp::tools::{
     DeleteSessionHandler, FindFileHandler, GetServerInfoHandler, GetSessionInfoHandler,
     IndexRepositoryHandler, ListDirHandler, ListSessionsHandler, PreviewChunkHandler,
     ReadFileHandler, ReindexSessionHandler, SearchCodeHandler, ShowShebeConfigHandler,
-    ToolRegistry,
+    ToolRegistry, UpgradeSessionHandler,
 };
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -38,6 +38,7 @@ impl ProtocolHandlers {
         registry.register(Arc::new(FindFileHandler::new(Arc::clone(&services))));
         registry.register(Arc::new(PreviewChunkHandler::new(Arc::clone(&services))));
         registry.register(Arc::new(ReindexSessionHandler::new(Arc::clone(&services))));
+        registry.register(Arc::new(UpgradeSessionHandler::new(Arc::clone(&services))));
 
         Self {
             initialized: AtomicBool::new(false),

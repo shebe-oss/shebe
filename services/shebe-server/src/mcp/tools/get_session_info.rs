@@ -222,7 +222,7 @@ mod tests {
     async fn test_format_info_markdown() {
         let (handler, _temp) = setup_test_handler().await;
 
-        use chrono::{DateTime, TimeZone, Utc};
+        use chrono::{TimeZone, Utc};
         let metadata = SessionMetadata {
             id: "test-session".to_string(),
             repository_path: PathBuf::from("/test/repo"),

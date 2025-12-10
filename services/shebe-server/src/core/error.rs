@@ -39,6 +39,14 @@ pub enum ShebeError {
     #[error("Invalid query: {0}")]
     InvalidQuery(String),
 
+    #[error("Invalid query field '{field}': {message}")]
+    InvalidQueryField {
+        field: String,
+        message: String,
+        valid_fields: Vec<String>,
+        suggestion: Option<String>,
+    },
+
     #[error("Configuration error: {0}")]
     ConfigError(String),
 
@@ -63,6 +71,7 @@ impl ShebeError {
             ShebeError::SessionAlreadyExists(_) => StatusCode::CONFLICT,
             ShebeError::InvalidSession(_)
             | ShebeError::InvalidQuery(_)
+            | ShebeError::InvalidQueryField { .. }
             | ShebeError::ConfigError(_) => StatusCode::BAD_REQUEST,
             ShebeError::IndexingFailed(_)
             | ShebeError::SearchFailed(_)

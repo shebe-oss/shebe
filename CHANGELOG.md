@@ -10,13 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - CI/CD pipeline for automated releases (`scripts/ci-build.sh`, `scripts/ci-release.sh`)
 - GitLab release automation using CI_JOB_TOKEN
+- `upgrade_session` MCP tool for one-command schema migration
+- Query preprocessing module with auto-escaping for Tantivy compatibility
+  - Curly braces: `{id}` -> `\{id\}`
+  - URL patterns: `/users/{id}` -> `"/users/\{id\}"`
+  - Multi-colon identifiers: `pkg:scope:name` -> `"pkg:scope:name"`
+- Literal search mode for `search_code` (escapes all special characters)
+- Field validation with suggestions (`file` -> `file_path`, `code` -> `content`)
+- Schema version and last_indexed_at in `list_sessions` output
 
 ### Changed
 - Reorganized codebase into `core/`, `http/`, `mcp/` top-level modules
 - Created unified `Services` struct replacing duplicate `ShebeServices` and `AppState`
 - Renamed `src/api/` to `src/http/` for consistency with adapter naming
 - Restructured test directory to mirror source layout (`tests/core/`, `tests/http/`, `tests/mcp/`)
-- Test count: 392 -> 285 (consolidated duplicate test modules)
+- Default `force=true` for `index_repository` (always re-indexes, eliminates session-exists errors)
+- Improved schema mismatch error messages (includes repository path and upgrade instructions)
+- Enhanced session-exists error with metadata (file count, schema version, timestamp)
+- Build optimization: clippy `--no-deps` flag (only lint shebe code)
+- Docker dev container now caches build artifacts via cargo-target volume
+- Tool count: 12 -> 13 MCP tools
+- Test count: 285 -> 350 tests
 
 ## [0.4.1] - 2025-10-28
 

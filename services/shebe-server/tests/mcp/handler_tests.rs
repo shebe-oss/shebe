@@ -78,7 +78,8 @@ mod tests {
 
         let result = response.result.unwrap();
         let tools = result["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 12); // search, list, info, index, server_info, config, read, delete, list_dir, find, preview, reindex
+        // search, list, info, index, server_info, config, read, delete, list_dir, find, preview, reindex, upgrade
+        assert_eq!(tools.len(), 13);
     }
 
     #[tokio::test]

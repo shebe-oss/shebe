@@ -10,6 +10,8 @@ services:
       # Cache cargo registry and git checkouts (speeds up subsequent runs)
       - cargo-registry:/usr/local/cargo/registry
       - cargo-git:/usr/local/cargo/git
+      # Cache build artifacts (speeds up incremental builds)
+      - cargo-target:/workspace/target
     environment:
       RUST_BACKTRACE: 1
       CARGO_HOME: /usr/local/cargo

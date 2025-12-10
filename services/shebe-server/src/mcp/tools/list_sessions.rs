@@ -1,9 +1,9 @@
 //! List sessions tool handler
 
 use super::handler::{text_content, McpToolHandler};
-use super::helpers::format_bytes;
+use super::helpers::{format_bytes, format_time_ago};
 use crate::core::services::Services;
-use crate::core::storage::SessionMetadata;
+use crate::core::storage::{SessionMetadata, SCHEMA_VERSION};
 use crate::mcp::error::McpError;
 use crate::mcp::protocol::{ToolResult, ToolSchema};
 use async_trait::async_trait;
@@ -35,6 +35,25 @@ impl ListSessionsHandler {
                 "- **Size:** {}\n",
                 format_bytes(session.index_size_bytes)
             ));
+
+            // Schema version with status
+            let schema_status = if session.schema_version == SCHEMA_VERSION {
+                "current"
+            } else {
+                "outdated, re-index required"
+            };
+            output.push_str(&format!(
+                "- **Schema:** v{} ({})\n",
+                session.schema_version, schema_status
+            ));
+
+            // Last indexed with relative time
+            output.push_str(&format!(
+                "- **Last indexed:** {} ({})\n",
+                session.last_indexed_at.format("%Y-%m-%d %H:%M UTC"),
+                format_time_ago(session.last_indexed_at)
+            ));
+
             output.push_str(&format!("- **Created:** {}\n\n", session.created_at));
         }
 
@@ -158,6 +177,8 @@ mod tests {
                 assert!(text.contains("**Files:**"));
                 assert!(text.contains("**Chunks:**"));
                 assert!(text.contains("**Size:**"));
+                assert!(text.contains("**Schema:**"));
+                assert!(text.contains("**Last indexed:**"));
                 assert!(text.contains("**Created:**"));
             }
         }
@@ -196,6 +217,9 @@ mod tests {
         assert!(output.contains("**Files:** 100"));
         assert!(output.contains("**Chunks:** 500"));
         assert!(output.contains("**Size:** 1.00 MB"));
+        assert!(output.contains("**Schema:** v3 (current)"));
+        assert!(output.contains("**Last indexed:**"));
+        assert!(output.contains("2025-10-21"));
         assert!(output.contains("**Created:** 2025-10-21")); // Check for date only, not full timestamp
     }
 
