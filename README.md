@@ -2,16 +2,18 @@
 
 **Simple RAG Service for Code Search**
 
-Think of Shebe as a _temu turbopuffer_, only covering ~30% of Turbopuffer's features but
-delivering ~70-85% of the value for typical developer workflows; at zero cost, full
-offline capability and complete privacy (code never leaves your machine). This trade-off
-works because research[1][],[2][] shows that **70-85% of developer code search value comes from
-keyword-based queries**. Developers usually search with exact terms they already know (function
-names, API calls, error messages) and less so with natural language concepts. The tradeoff is
-that Shebe doesn't handle conceptual queries like "find authentication handling" - but
-searching "authentication handler" covers this case in most codebases*. For detailed
-analysis, see
-[docs/analyses/018-bm25-vs-vector-code-search-01.md](./docs/analyses/018-bm25-vs-vector-code-search-01.md).
+Shebe provides a tiny subset of a full-featured code-search-API's functionality.
+Think of Shebe as a _temu [nia][] or [turbopuffer][]_. The premise of Shebe is 
+that this tiny tool foregoes the complexity of a powerful API but still
+delivers ~70-85% of the value for typical developer workflows; at zero cost, full
+offline capability and complete privacy (code never leaves your machine). Research[1][],[2][] 
+shows that **70-85% of developer code search value comes from keyword-based queries**. 
+Developers usually search with exact terms they already know (function
+names, API calls, error messages) and less so with natural language concepts. Github's codesearch 
+famously runs without vector search. And so Shebe doesn't handle conceptual queries 
+like "find authentication handling" - because developers would usually search for 
+"authentication handler" and BM25 excels* at this. 
+For detailed analysis, see [bm25-vs-vector-code-search][].
 
 **Key Features:**
 - 2ms query latency
@@ -26,17 +28,18 @@ analysis, see
 *Assumes conventional naming. Semantic search better handles synonyms like "login" vs
 "authenticate".
 
+[nia]: https://www.trynia.ai/#pricing
+[turbopuffer]: https://turbopuffer.com/pricing
 [1]: https://research.google/pubs/how-developers-search-for-code-a-case-study/
 [2]: https://sourcegraph.com/blog/keeping-it-boring-and-relevant-with-bm25f
+[bm25-vs-vector-code-search]: ./docs/analyses/018-bm25-vs-vector-code-search-01.md
 
 
 ## Table of Contents
 
-- [What is Shebe?](#what-is-shebe)
 - [Quick Start](#quick-start)
 - [Why Shebe?](#why-shebe)
 - [Common Tasks](#common-tasks)
-- [Tool Selection Guide](#tool-selection-guide)
 - [Configuration](#configuration)
 - [Documentation](#documentation)
 - [Performance](#performance)
@@ -45,13 +48,6 @@ analysis, see
 - [Project Status](#project-status)
 - [License](#license)
 - [Contributing](#contributing)
-
----
-
-## What is Shebe?
-
-Shebe provides **content search** for code - find functions, APIs and patterns across
-large codebases using keyword search.
 
 
 
@@ -125,21 +121,10 @@ For detailed setup, see [INSTALLATION.md](./INSTALLATION.md).
 
 When using AI coding assistants to refactor symbols across large codebases (6k+ files),
 developers are currently forced to pick either precision (LSP-based tools) 
-or efficiency (grep/ripgrep). Shebe attempts to bridge this trade-off by 
-acting as a complementary tool between grep/ripgrep and LSP tools.
-
-**Benchmark: Refactoring `AuthorizationPolicy` across Istio (~6k files)**
-
-| Approach                | Searches | Time   | Tokens  |
-|-------------------------|----------|--------|---------|
-| Shebe `find_references` | 1        | 2-3s   | ~4,500  |
-| Claude + Grep           | 13       | 15-20s | ~12,000 |
-| Claude + Serena MCP     | 8        | 25-30s | ~18,000 |
-
-Shebe provides 6-10x faster end-to-end time and 3-4x fewer tokens by returning
-confidence-scored, pattern-classified results in a single call.
-
-See [WHY_SHEBE.md](./WHY_SHEBE.md) for detailed benchmarks and tool comparisons.
+or efficiency (grep/ripgrep). There are tools like [turbopuffer][] and [nia][] but 
+these cost $$$. Shebe is a free, local-only, simpler and smaller alternative 
+to these tools. See [WHY_SHEBE.md](./WHY_SHEBE.md) for 2 examples of detailed 
+benchmarks and tool comparisons.
 
 ### Quick Comparison
 
@@ -166,50 +151,6 @@ Quick links to accomplish specific goals:
 | Find files by pattern    | `find_file`                        | [Reference](./docs/guides/mcp-tools-reference.md#tool-find_file)       |
 | View file with context   | `read_file` or `preview_chunk`     | [Reference](./docs/guides/mcp-tools-reference.md#tool-read_file)       |
 | Update stale index       | `reindex_session`                  | [Reference](./docs/guides/mcp-tools-reference.md#tool-reindex_session) |
-
----
-
-## Tool Selection Guide
-
-### Content Search (Use Shebe)
-
-Best for finding code by keywords, patterns and text content:
-- "Find all usages of `authenticate`"
-- "Where is rate limiting implemented?"
-- "Show me error handling patterns"
-- "Find configuration for database connections"
-
-### Structural Navigation (Use Serena/LSP)
-
-Best for precise symbol operations and type information:
-- "Go to definition of `UserService`"
-- "Find all implementations of `Handler` trait"
-- "Rename `oldFunc` to `newFunc` across codebase"
-- "Show type hierarchy for this class"
-
-### Simple Pattern Matching (Use grep/ripgrep)
-
-Best for exact string matches in small codebases:
-- "Find exact string `TODO:`"
-- "Count occurrences of `deprecated`"
-- "Quick one-off search in <1,000 files"
-
-### External Information (Use Web Search)
-
-Best for documentation and community knowledge:
-- "Latest React 19 migration guide"
-- "Community solutions for specific errors"
-- "Blog posts about architectural patterns"
-
-### Shebe + Serena Together
-
-For complete codebase exploration without token waste:
-
-```
-1. Shebe: "Find usages of authenticate" -> discover files (2ms, 300 tokens)
-2. Serena: "Go to definition" -> navigate to implementation (precise)
-3. Shebe: "Find similar patterns" -> discover related code (2ms, 300 tokens)
-```
 
 ---
 
@@ -281,29 +222,7 @@ See [docs/Performance.md](./docs/Performance.md) for detailed benchmarks.
 
 ## Architecture
 
-### MCP-Only Design
-
-Shebe is accessed exclusively via the MCP protocol, designed for Claude Code integration.
-No HTTP server required.
-
 ### System Design
-
-```
-                    +------------------+
-                    |   Claude Code    |
-                    +--------+---------+
-                             | MCP (stdio)
-                    +--------v---------+
-                    |   shebe-mcp      |
-                    |   (14 tools)     |
-                    +--------+---------+
-                             |
-                    +--------v---------+
-                    |  Shared Storage  |
-                    | ~/.local/state/  |
-                    |  shebe/sessions/ |
-                    +------------------+
-```
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for developer guide.
 
