@@ -4,8 +4,13 @@
 # Stages:
 #   - cache: Build Rust dependency cache (only when Cargo.lock changes)
 #   - test: Run tests, fmt check, clippy, coverage
-#   - build: Build release binaries (tags only, parallel matrix for glibc/musl)
+#   - build: Build release binaries and MCPB bundle (tags only)
 #   - release: Create GitLab release with artifacts (tags only)
+#
+# Build Strategy:
+#   - build:version: Extracts version from Cargo.toml, passes via dotenv
+#   - build:shebe: Native builds (rust-debian for glibc, rust-alpine for musl)
+#   - package:mcpb: Creates MCP Bundle from musl binary
 #
 # Cache Strategy:
 #   - cache:rust job runs ONLY when Cargo.toml/Cargo.lock changes (push policy)
@@ -14,6 +19,7 @@
 #
 # Scripts:
 #   - scripts/ci-build.sh: Build binaries and create tarballs
+#   - scripts/ci-mcpb.sh: Create MCPB bundle from musl binary
 #   - scripts/ci-release.sh: Create GitLab release via API
 #--------------------------------------------------------------------------------------
 
@@ -21,6 +27,7 @@ stages:
   - cache
   - test
   - build
+  - package
   - release
 
 variables:
@@ -64,6 +71,13 @@ variables:
       - services/shebe-server/Cargo.toml
       - services/shebe-server/Cargo.lock
 
+# Rules for building
+.release-rules: &build-rules
+  - if: '$CI_COMMIT_BRANCH == "main"'
+    changes:
+      - services/shebe-server/Cargo.toml
+      - services/shebe-server/Cargo.lock
+
 # Rules for tag-based releases
 .release-rules: &release-rules
   - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
@@ -76,7 +90,7 @@ variables:
 
 cache:rust:
   stage: cache
-  image: registry.gitlab.com/rhobimd-oss/cicd/rust:20251101-b1.88-slim
+  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22
   script:
     - |
       set -euo pipefail
@@ -117,7 +131,7 @@ test:shebe:
 
 test:shebe:
   stage: test
-  image: registry.gitlab.com/rhobimd-oss/cicd/rust:20251101-b1.88-slim
+  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22
   extends: .rust_cache
   needs: []  # Don't wait for cache job (it's optional)
   script:
@@ -158,43 +172,92 @@ test:shebe:
     when: always
 
 #--------------------------------------------------------------------------------------
-# Build Stage (Parallel Matrix)
+# Build Stage (Parallel Matrix with Dedicated Native Images)
 #
-# Builds glibc and musl targets in parallel for faster CI.
-# Each job produces a tarball uploaded as artifact for the release stage.
+# Uses native images for each target - no cross-compilation needed.
+# - rust-debian: glibc/dynamic binaries for standard Linux
+# - rust-alpine: musl/static binaries for MCPB bundles, Alpine
 #--------------------------------------------------------------------------------------
+
+# Extract version from Cargo.toml and pass to downstream jobs via dotenv
+build:version:
+  stage: build
+  image: registry.gitlab.com/rhobimd-oss/cicd/alpine:20260117b-b3.13-alpine3.22-b287ff20c
+  script:
+    - |
+      _SHEBE_VERSION=$(grep '^version' ${SHEBE_SERVICE_DIR}/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+      echo "_SHEBE_VERSION=${_SHEBE_VERSION}" > version.env
+      echo "Extracted version: ${_SHEBE_VERSION}"
+  interruptible: true
+  timeout: 1m
+  rules: *build-rules
+  artifacts:
+    reports:
+      dotenv: version.env
+    expire_in: 1 day
 
 build:shebe:
   stage: build
-  image: registry.gitlab.com/rhobimd-oss/cicd/rust:20260119-b1.88-slim-rc
   extends: .rust_cache
   variables:
     CARGO_TERM_COLOR: always
   parallel:
     matrix:
-      - BUILD_TARGET: x86_64-unknown-linux-gnu
+      - BUILD_IMAGE: lang/rust-debian:20260118-b1.88-slim-trixie
         ARTIFACT_SUFFIX: linux-x86_64
-      - BUILD_TARGET: x86_64-unknown-linux-musl
+        BUILD_MODE: dynamic
+      - BUILD_IMAGE: lang/rust-alpine:20260119-b1.88-alpine3.22
         ARTIFACT_SUFFIX: linux-x86_64-musl
+        BUILD_MODE: static
+  image: registry.gitlab.com/rhobimd-oss/cicd/${BUILD_IMAGE}
   script:
     - ./scripts/ci-build.sh
   interruptible: true
   timeout: 30m
-  rules: *release-rules
+  rules: *build-rules
+  needs:
+    - job: build:version
+      artifacts: true
   artifacts:
-    name: "shebe-${CI_COMMIT_TAG}-${ARTIFACT_SUFFIX}"
+    name: "shebe-v${_SHEBE_VERSION}-${ARTIFACT_SUFFIX}"
     paths:
       - releases/
-      - build.env
-    reports:
-      dotenv: build.env
+    expire_in: 1 year
+    when: on_success
+
+#--------------------------------------------------------------------------------------
+# Build MCPB Bundle
+#
+# Creates MCP Bundle (.mcpb) from the musl static binary for MCP Registry publication.
+# Runs after build:shebe completes (needs musl tarball artifact).
+#--------------------------------------------------------------------------------------
+
+package:mcpb:
+  stage: package
+  image: registry.gitlab.com/rhobimd-oss/cicd/alpine:20260117b-b3.13-alpine3.22-b287ff20c
+  script:
+    - ./scripts/ci-mcpb.sh
+  interruptible: true
+  timeout: 5m
+  rules: *build-rules
+  needs:
+    - job: build:version
+      artifacts: true
+    - job: build:shebe
+      artifacts: true
+  artifacts:
+    name: "shebe-v${_SHEBE_VERSION}-mcpb"
+    paths:
+      - releases/*.mcpb
+      - releases/*.mcpb.sha256
+      - releases/server.json
     expire_in: 1 year
     when: on_success
 
 #--------------------------------------------------------------------------------------
 # Release Stage
 # Uses CI_JOB_TOKEN for API authentication (no manual token needed)
-# Collects artifacts from all matrix jobs
+# Collects artifacts from build:shebe and package:mcpb
 #--------------------------------------------------------------------------------------
 
 release:shebe:
@@ -206,11 +269,14 @@ release:shebe:
   before_script:
     - git config --global --add safe.directory "${CI_PROJECT_DIR}"
   script:
-    - ./scripts/ci-mcpb.sh # Create MCPB bundle from musl binary
     - ./scripts/ci-release.sh # Create GitLab release with all artifacts
   rules: *release-rules
   needs:
+    - job: build:version
+      artifacts: true
     - job: build:shebe
+      artifacts: true
+    - job: package:mcpb
       artifacts: true
   artifacts:
     paths:

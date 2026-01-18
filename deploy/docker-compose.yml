@@ -5,12 +5,19 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/data
-  # Cargo cache volumes for faster test runs
+  # Cargo cache volumes for faster builds (glibc)
   cargo-registry:
     driver: local
   cargo-git:
     driver: local
   cargo-target:
+    driver: local
+  # Cargo cache volumes for musl builds (separate to avoid conflicts)
+  cargo-registry-musl:
+    driver: local
+  cargo-git-musl:
+    driver: local
+  cargo-target-musl:
     driver: local
 
 networks:
@@ -18,8 +25,10 @@ networks:
     driver: bridge
 
 services:
+  # Primary development container (Debian/glibc)
+  # Use for: tests, linting, formatting, debug builds
   shebe-dev:
-    image: registry.gitlab.com/rhobimd-oss/cicd/rust:20260119-b1.88-slim-rc
+    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260118-b1.88-slim-trixie
     container_name: shebe-dev
     working_dir: /workspace
     volumes:
@@ -40,3 +49,21 @@ services:
     stdin_open: true
     tty: true
     command: bash
+
+  # Optional: Alpine/musl container for static binary builds
+  # Use for: testing static binary behavior, local MCPB creation
+  shebe-dev-musl:
+    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22-rc
+    container_name: shebe-dev-musl
+    working_dir: /workspace
+    volumes:
+      - ../services/shebe-server:/workspace:rw
+      - cargo-registry-musl:/usr/local/cargo/registry
+      - cargo-git-musl:/usr/local/cargo/git
+      - cargo-target-musl:/workspace/target
+    environment:
+      RUST_BACKTRACE: 1
+      CARGO_HOME: /usr/local/cargo
+    stdin_open: true
+    tty: true
+    command: /bin/bash

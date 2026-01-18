@@ -24,7 +24,10 @@ PROJECT_DIR ?= $(PWD)
 
 # DEVELOPMENT TARGETS ----------------------------------------------------------
 # All local Rust commands run in shebe-dev container for consistency with CI/CD
+# shebe-dev: Debian/glibc for tests, linting, formatting
+# shebe-dev-musl: Alpine/musl for static binary builds (optional)
 DOCKER_RUN := docker compose --file ${PROJECT_DIR}/deploy/docker-compose.yml run --rm shebe-dev
+DOCKER_RUN_MUSL := docker compose --file ${PROJECT_DIR}/deploy/docker-compose.yml run --rm shebe-dev-musl
 
 
 # Build targets
@@ -71,10 +74,20 @@ shell:
 	@echo "Starting interactive shell in shebe-dev container..."
 	cd deploy && docker compose run --rm shebe-dev bash
 
+# Musl/static build targets (optional - for testing static binaries)
+build-musl:
+	@echo "Building static musl binary in shebe-dev-musl container..."
+	$(DOCKER_RUN_MUSL) cargo build --release
+
+shell-musl:
+	@echo "Starting interactive shell in shebe-dev-musl container..."
+	cd deploy && docker compose run --rm shebe-dev-musl /bin/bash
+
 # Clean Docker artifacts
 clean:
 	@echo "Cleaning Docker volumes..."
 	docker volume rm deploy_cargo-registry deploy_cargo-git deploy_cargo-target 2>/dev/null || true
+	docker volume rm deploy_cargo-registry-musl deploy_cargo-git-musl deploy_cargo-target-musl 2>/dev/null || true
 	@echo "Docker volumes cleaned"
 
 .PHONY: commit
@@ -147,11 +160,9 @@ shebe-test:
 help:
 	@echo "Shebe Makefile Targets:"
 	@echo ""
-	@echo "Development Targets (shebe-dev container):"
+	@echo "Development Targets (shebe-dev container - Debian/glibc):"
 	@echo "  build                Build debug binary"
 	@echo "  build-release        Build release binary"
-	@echo "  run                  Run server (debug mode)"
-	@echo "  run-release          Run server (release mode)"
 	@echo "  test                 Run tests with cargo nextest"
 	@echo "  test-coverage        Run tests with coverage (tarpaulin)"
 	@echo "  fmt                  Format code"
@@ -160,6 +171,10 @@ help:
 	@echo "  check                Run cargo check"
 	@echo "  shell                Open interactive shell in shebe-dev"
 	@echo "  clean                Clean Docker volumes"
+	@echo ""
+	@echo "Musl/Static Targets (shebe-dev-musl container - Alpine/musl):"
+	@echo "  build-musl           Build static musl binary"
+	@echo "  shell-musl           Open interactive shell in shebe-dev-musl"
 	@echo ""
 	@echo "Shebe Binaries (shebe-dev container):"
 	@echo "  shebe-build          Build shebe (CLI) and shebe-mcp binaries"
