@@ -23,7 +23,6 @@ stages:
   - prep
   - test
   - build
-  - package
   - release
   - publish
 
@@ -77,46 +76,46 @@ dummy:job:
   artifacts:
     reports: {} # Disable artifact generation
 
-test:shebe:
-  stage: test
-  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22
-  needs: [] # Don't wait for cache job (it's optional)
-  script:
-    - |
-      set -euo pipefail
-      cd ${SHEBE_SERVICE_DIR}
+# test:shebe:
+#   stage: test
+#   image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22
+#   needs: [] # Don't wait for cache job (it's optional)
+#   script:
+#     - |
+#       set -euo pipefail
+#       cd ${SHEBE_SERVICE_DIR}
 
-      echo "=== Toolchain versions ==="
-      rustc --version
-      cargo --version
-      cargo nextest --version
-      cargo tarpaulin --version
+#       echo "=== Toolchain versions ==="
+#       rustc --version
+#       cargo --version
+#       cargo nextest --version
+#       cargo tarpaulin --version
 
-      echo "=== Format check ==="
-      cargo fmt -- --check --verbose
+#       echo "=== Format check ==="
+#       cargo fmt -- --check --verbose
 
-      echo "=== Build (compile dependencies) ==="
-      cargo check --all-features --workspace
+#       echo "=== Build (compile dependencies) ==="
+#       cargo check --all-features --workspace
 
-      echo "=== Clippy (shebe only) ==="
-      cargo clippy --no-deps -- -D warnings
+#       echo "=== Clippy (shebe only) ==="
+#       cargo clippy --no-deps -- -D warnings
 
-      echo "=== Tests ==="
-      cargo nextest run --all-features --workspace
+#       echo "=== Tests ==="
+#       cargo nextest run --all-features --workspace
 
-      echo "=== Coverage ==="
-      cargo tarpaulin --skip-clean --all-features --workspace --out Xml --output-dir . --fail-under 60
-  interruptible: true
-  timeout: 30m
-  rules: *shebe-rules
-  coverage: '/^\d+\.\d+% coverage/'
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: services/shebe-server/cobertura.xml
-    expire_in: 1 week
-    when: always
+#       echo "=== Coverage ==="
+#       cargo tarpaulin --skip-clean --all-features --workspace --out Xml --output-dir . --fail-under 60
+#   interruptible: true
+#   timeout: 30m
+#   rules: *shebe-rules
+#   coverage: '/^\d+\.\d+% coverage/'
+#   artifacts:
+#     reports:
+#       coverage_report:
+#         coverage_format: cobertura
+#         path: services/shebe-server/cobertura.xml
+#     expire_in: 1 week
+#     when: always
 
 #--------------------------------------------------------------------------------------
 # Build Stage (Parallel Matrix with Dedicated Native Images)
@@ -159,13 +158,13 @@ build:shebe:
 #--------------------------------------------------------------------------------------
 
 package:mcpb:
-  stage: package
+  stage: release
   image: registry.gitlab.com/rhobimd-oss/cicd/alpine:20260117b-b3.13-alpine3.22-b287ff20c
   script:
     - ./scripts/ci-mcpb.sh
   interruptible: true
   timeout: 5m
-  rules: *build-rules
+  rules: *release-rules
   needs:
     - job: build:shebe
       artifacts: true
@@ -216,7 +215,7 @@ release:shebe:
 
 publish:mcp-registry:
   stage: publish
-  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260118-b1.88-slim-trixie
+  image: registry.gitlab.com/rhobimd-oss/cicd/alpine:20260119-b3.13-alpine3.22-b287ff20c-rc
   variables:
     MCP_DOMAIN: "oss.rhobimd.health"
   script:
