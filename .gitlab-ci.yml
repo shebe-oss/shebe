@@ -25,6 +25,7 @@ stages:
   - build
   - package
   - release
+  - publish
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/.cargo
@@ -56,7 +57,6 @@ variables:
 # Rules for tag-based releases
 .release-rules: &release-rules
   - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
-  - if: $CI_COMMIT_REF_NAME =~ /^v\d+\.\d+\.\d+/
 
 #--------------------------------------------------------------------------------------
 # Test Stage
@@ -77,46 +77,46 @@ dummy:job:
   artifacts:
     reports: {} # Disable artifact generation
 
-# test:shebe:
-#   stage: test
-#   image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22
-#   needs: [] # Don't wait for cache job (it's optional)
-#   script:
-#     - |
-#       set -euo pipefail
-#       cd ${SHEBE_SERVICE_DIR}
+test:shebe:
+  stage: test
+  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22
+  needs: [] # Don't wait for cache job (it's optional)
+  script:
+    - |
+      set -euo pipefail
+      cd ${SHEBE_SERVICE_DIR}
 
-#       echo "=== Toolchain versions ==="
-#       rustc --version
-#       cargo --version
-#       cargo nextest --version
-#       cargo tarpaulin --version
+      echo "=== Toolchain versions ==="
+      rustc --version
+      cargo --version
+      cargo nextest --version
+      cargo tarpaulin --version
 
-#       echo "=== Format check ==="
-#       cargo fmt -- --check --verbose
+      echo "=== Format check ==="
+      cargo fmt -- --check --verbose
 
-#       echo "=== Build (compile dependencies) ==="
-#       cargo check --all-features --workspace
+      echo "=== Build (compile dependencies) ==="
+      cargo check --all-features --workspace
 
-#       echo "=== Clippy (shebe only) ==="
-#       cargo clippy --no-deps -- -D warnings
+      echo "=== Clippy (shebe only) ==="
+      cargo clippy --no-deps -- -D warnings
 
-#       echo "=== Tests ==="
-#       cargo nextest run --all-features --workspace
+      echo "=== Tests ==="
+      cargo nextest run --all-features --workspace
 
-#       echo "=== Coverage ==="
-#       cargo tarpaulin --skip-clean --all-features --workspace --out Xml --output-dir . --fail-under 60
-#   interruptible: true
-#   timeout: 30m
-#   rules: *shebe-rules
-#   coverage: '/^\d+\.\d+% coverage/'
-#   artifacts:
-#     reports:
-#       coverage_report:
-#         coverage_format: cobertura
-#         path: services/shebe-server/cobertura.xml
-#     expire_in: 1 week
-#     when: always
+      echo "=== Coverage ==="
+      cargo tarpaulin --skip-clean --all-features --workspace --out Xml --output-dir . --fail-under 60
+  interruptible: true
+  timeout: 30m
+  rules: *shebe-rules
+  coverage: '/^\d+\.\d+% coverage/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: services/shebe-server/cobertura.xml
+    expire_in: 1 week
+    when: always
 
 #--------------------------------------------------------------------------------------
 # Build Stage (Parallel Matrix with Dedicated Native Images)
@@ -205,3 +205,25 @@ release:shebe:
       - RELEASE_NOTES.md
       - CHANGELOG.md
     expire_in: 1 year
+
+#--------------------------------------------------------------------------------------
+# Publish to MCP Registry (Manual Trigger)
+#
+# Publishes Shebe to the official MCP Registry (registry.modelcontextprotocol.io).
+# Requires MCP_PRIVATE_KEY CI/CD variable for DNS-based authentication.
+# Manual trigger to prevent accidental publication.
+#--------------------------------------------------------------------------------------
+
+publish:mcp-registry:
+  stage: publish
+  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260118-b1.88-slim-trixie
+  variables:
+    MCP_DOMAIN: "oss.rhobimd.health"
+  script:
+    - ./scripts/ci-mcpb-publish.sh
+  rules: *release-rules
+  needs:
+    - job: package:mcpb
+      artifacts: true
+    - job: release:shebe
+      artifacts: false

@@ -35,9 +35,7 @@ else
 fi
 
 # Configuration
-SHEBE_SERVICE_DIR="${SHEBE_SERVICE_DIR:-services/shebe-server}"
 RELEASE_DIR="${RELEASE_DIR:-releases}"
-CARGO_TOML="${REPO_ROOT}/${SHEBE_SERVICE_DIR}/Cargo.toml"
 PREVIEW_MODE=false
 
 # Release artifacts: "filename-pattern:description"
@@ -48,7 +46,8 @@ RELEASE_ARTIFACTS=(
 )
 
 # MCPB bundle (separate handling due to different filename pattern)
-MCPB_ARTIFACT="shebe-v{VERSION}.mcpb"
+# Filename includes 'mcp' as required by MCP Registry URL validation
+MCPB_ARTIFACT="shebe-mcp-v{VERSION}.mcpb"
 
 #----------------------------------------------------------
 # Functions
@@ -63,23 +62,16 @@ error() {
     exit 1
 }
 
-extract_version() {
-    if [[ ! -f "${CARGO_TOML}" ]]; then
-        error "Cargo.toml not found at ${CARGO_TOML}"
-    fi
-    grep '^version' "${CARGO_TOML}" | head -1 | sed 's/.*"\(.*\)".*/\1/'
-}
-
 usage() {
     echo "Usage: $0 [--preview [VERSION]]"
     echo ""
     echo "Options:"
     echo "  --preview [VERSION]  Preview release notes locally (no API calls)"
-    echo "                       VERSION defaults to next version from VERSION file"
+    echo "                       VERSION defaults to version from Cargo.toml"
     echo ""
     echo "Examples:"
     echo "  $0                   # Run in GitLab CI (requires CI variables)"
-    echo "  $0 --preview         # Preview with version from VERSION file"
+    echo "  $0 --preview         # Preview with version from Cargo.toml"
     echo "  $0 --preview v0.5.0  # Preview specific version"
     exit 0
 }
@@ -89,13 +81,15 @@ setup_preview_environment() {
 
     # Get version from Cargo.toml if not provided
     if [[ -z "${version}" ]]; then
-        version=$(extract_version)
-        if [[ -z "${version}" ]]; then
-            error "Failed to extract version from Cargo.toml"
+        local cargo_toml="${REPO_ROOT}/services/shebe-server/Cargo.toml"
+        if [[ -f "${cargo_toml}" ]]; then
+            version="v$(grep '^version = ' "${cargo_toml}" | head -1 | sed 's/version = "\(.*\)"/\1/')"
+        else
+            error "No version provided and Cargo.toml not found"
         fi
     fi
 
-    # Ensure version starts with 'v' for tag
+    # Ensure version starts with 'v'
     if [[ "${version}" != v* ]]; then
         version="v${version}"
     fi
@@ -119,8 +113,15 @@ validate_environment() {
         return 0
     fi
 
-    if [[ -z "${CI_COMMIT_TAG:-}" ]]; then
-        error "CI_COMMIT_TAG is not set. This script should only run on Git tags."
+    # Get version from Cargo.toml as the source of truth
+    local cargo_toml="${REPO_ROOT}/services/shebe-server/Cargo.toml"
+    if [[ -f "${cargo_toml}" ]]; then
+        local cargo_version
+        cargo_version=$(grep '^version = ' "${cargo_toml}" | head -1 | sed 's/version = "\(.*\)"/\1/')
+        export CI_COMMIT_TAG="v${cargo_version}"
+        log "Version from Cargo.toml: ${CI_COMMIT_TAG}"
+    else
+        error "Cargo.toml not found at ${cargo_toml}"
     fi
 
     if [[ -z "${CI_JOB_TOKEN:-}" ]]; then
@@ -285,7 +286,7 @@ generate_release_notes() {
     done
 
     # Add MCPB bundle row
-    local mcpb_name="shebe-v${version}.mcpb"
+    local mcpb_name="shebe-mcp-v${version}.mcpb"
     local mcpb_url
     local mcpb_checksum_url
     mcpb_url=$(get_package_url "${version}" "${mcpb_name}")
@@ -360,13 +361,15 @@ create_gitlab_release() {
         asset_links="${asset_links},{\"name\":\"${tarball}.sha256\",\"url\":\"${checksum_url}\",\"link_type\":\"other\"}"
     done
 
-    # Add MCPB bundle links
-    local mcpb_name="shebe-v${version}.mcpb"
+    # Add MCPB bundle links with filepath for direct download URL
+    # filepath creates redirect at /releases/{tag}/downloads/{filepath}
+    # This is required by MCP Registry which needs URL pattern: /releases/tag/downloads/filename
+    local mcpb_name="shebe-mcp-v${version}.mcpb"
     local mcpb_url
     local mcpb_checksum_url
     mcpb_url=$(get_package_url "${version}" "${mcpb_name}")
     mcpb_checksum_url=$(get_package_url "${version}" "${mcpb_name}.sha256")
-    asset_links="${asset_links},{\"name\":\"${mcpb_name}\",\"url\":\"${mcpb_url}\",\"link_type\":\"package\"}"
+    asset_links="${asset_links},{\"name\":\"${mcpb_name}\",\"url\":\"${mcpb_url}\",\"link_type\":\"package\",\"filepath\":\"/${mcpb_name}\"}"
     asset_links="${asset_links},{\"name\":\"${mcpb_name}.sha256\",\"url\":\"${mcpb_checksum_url}\",\"link_type\":\"other\"}"
 
     asset_links="${asset_links}]"
@@ -447,12 +450,8 @@ main() {
     # Validate environment
     validate_environment
 
-    # Extract version from Cargo.toml
-    local version
-    version=$(extract_version)
-    if [[ -z "${version}" ]]; then
-        error "Failed to extract version from Cargo.toml"
-    fi
+    # Extract version from tag (strip 'v' prefix)
+    local version="${CI_COMMIT_TAG#v}"
     log "Version: ${version}"
 
     # Extract changelog section for this version from CHANGELOG.md
