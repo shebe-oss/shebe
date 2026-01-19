@@ -13,13 +13,13 @@
 #   ./scripts/ci-mcpb.sh --preview    # Local preview (no upload)
 #
 # Required environment variables (GitLab CI predefined):
+#   CI_COMMIT_TAG       - Git tag (e.g., v0.5.6)
 #   CI_PROJECT_ID       - GitLab project ID
 #   CI_API_V4_URL       - GitLab API URL
 #   CI_JOB_TOKEN        - Job token for API authentication
 #
 # Optional:
 #   RELEASE_DIR         - Directory containing release artifacts (default: releases)
-#   SHEBE_SERVICE_DIR   - Path to shebe-server (default: services/shebe-server)
 #----------------------------------------------------------
 set -euo pipefail
 
@@ -31,9 +31,7 @@ else
     REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 fi
 
-SHEBE_SERVICE_DIR="${SHEBE_SERVICE_DIR:-services/shebe-server}"
 RELEASE_DIR="${RELEASE_DIR:-releases}"
-CARGO_TOML="${REPO_ROOT}/${SHEBE_SERVICE_DIR}/Cargo.toml"
 PREVIEW_MODE=false
 
 #----------------------------------------------------------
@@ -47,13 +45,6 @@ log() {
 error() {
     echo "[ci-mcpb] ERROR: $*" >&2
     exit 1
-}
-
-extract_version() {
-    if [[ ! -f "${CARGO_TOML}" ]]; then
-        error "Cargo.toml not found at ${CARGO_TOML}"
-    fi
-    grep '^version' "${CARGO_TOML}" | head -1 | sed 's/.*"\(.*\)".*/\1/'
 }
 
 # Check required dependencies
@@ -96,13 +87,15 @@ upload_file() {
 }
 
 # Generate server.json for MCP Registry publication
-# Uses GitLab release asset URL pattern required by MCP Registry:
+# Uses GitLab release download URL pattern required by MCP Registry:
 #   /owner/repo/-/releases/tag/downloads/filename
+# The filename must contain 'mcp' for MCP Registry validation
 generate_server_json() {
     local version="$1"
     local sha256="$2"
-    # MCP Registry requires release asset URL (not API URL)
-    local mcpb_url="https://gitlab.com/rhobimd-oss/shebe/-/releases/v${version}/downloads/shebe-v${version}.mcpb"
+    local mcpb_name="shebe-mcp-v${version}.mcpb"
+    # MCP Registry requires release download URL pattern with 'mcp' in filename
+    local mcpb_url="https://gitlab.com/rhobimd-oss/shebe/-/releases/v${version}/downloads/${mcpb_name}"
 
     log "Generating server.json for MCP Registry..."
 
@@ -163,16 +156,18 @@ main() {
 
     cd "${REPO_ROOT}"
 
-    # Extract version from Cargo.toml
+    # Get version from Cargo.toml as the source of truth
     local version
-    version=$(extract_version)
-    if [[ -z "${version}" ]]; then
-        error "Failed to extract version from Cargo.toml"
+    local cargo_toml="${REPO_ROOT}/services/shebe-server/Cargo.toml"
+    if [[ -f "${cargo_toml}" ]]; then
+        version=$(grep '^version = ' "${cargo_toml}" | head -1 | sed 's/version = "\(.*\)"/\1/')
+    else
+        error "Cargo.toml not found at ${cargo_toml}"
     fi
 
     log "Creating MCPB bundle for version ${version}"
 
-    local mcpb_name="shebe-v${version}.mcpb"
+    local mcpb_name="shebe-mcp-v${version}.mcpb"
     local musl_tarball="${RELEASE_DIR}/shebe-v${version}-linux-x86_64-musl.tar.gz"
 
     # Verify musl tarball exists
@@ -225,11 +220,9 @@ main() {
     log "Bundle contents:"
     unzip -l "${RELEASE_DIR}/${mcpb_name}"
 
-    # Generate server.json for MCP Registry publication
-    generate_server_json "${version}" "${mcpb_sha256}"
-
     if [[ "${PREVIEW_MODE}" == "true" ]]; then
         log "Preview mode - skipping upload"
+        generate_server_json "${version}" "${mcpb_sha256}"
         log "Files generated:"
         log "  - ${RELEASE_DIR}/${mcpb_name}"
         log "  - ${RELEASE_DIR}/${mcpb_name}.sha256"
@@ -242,12 +235,21 @@ main() {
 
         local base_url="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/shebe/${version}"
 
-        log "Uploading to package registry..."
+        # Step 1: Upload MCPB bundle and checksum
+        log "Uploading MCPB bundle to package registry..."
         upload_file "${base_url}/${mcpb_name}" "${RELEASE_DIR}/${mcpb_name}"
         upload_file "${base_url}/${mcpb_name}.sha256" "${RELEASE_DIR}/${mcpb_name}.sha256"
+
+        # Step 2: Generate server.json with release download URL
+        # URL pattern: /releases/v{version}/downloads/{filename}
+        # This URL will work after ci-release.sh creates the release with filepath
+        generate_server_json "${version}" "${mcpb_sha256}"
+
+        # Step 3: Upload server.json
         upload_file "${base_url}/server.json" "${RELEASE_DIR}/server.json"
 
         log "MCPB bundle and server.json uploaded successfully"
+        log "MCPB URL: https://gitlab.com/rhobimd-oss/shebe/-/releases/v${version}/downloads/${mcpb_name}"
     fi
 }
 

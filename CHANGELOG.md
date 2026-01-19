@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- MCP Registry publication support (work plan 019 phase 6)
+  - `publish:mcp-registry` CI job with manual trigger for controlled releases
+  - `scripts/ci-mcpb-publish.sh` for registry publication with DNS authentication
+  - Validates server.json and verifies publication via registry API
+
+### Changed
+- MCPB filename pattern: `shebe-v{version}.mcpb` -> `shebe-mcp-v{version}.mcpb`
+  - Required by MCP Registry URL validation (filename must contain 'mcp')
+- Added `filepath` to MCPB asset link for direct download URL pattern
+  - Enables MCP Registry URL pattern: `/releases/tag/downloads/filename`
+- Refactored version extraction to use Cargo.toml directly in CI scripts
+- Added `publish` stage to CI/CD pipeline
+
 ## [0.5.5] - 2026-01-17
 
 ### Added
