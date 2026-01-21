@@ -1,0 +1,161 @@
+# Build macOS binaries for Shebe
+#
+# Triggered by:
+# - GitLab CI via repository_dispatch (on tag push, after Linux artifacts uploaded)
+# - Manual workflow_dispatch (for testing)
+#
+# Builds:
+# - x86_64-apple-darwin (Intel Macs) on macos-13
+# - aarch64-apple-darwin (Apple Silicon) on macos-14
+#
+# Flow:
+# 1. GitLab CI builds Linux binaries and creates draft GitHub release
+# 2. GitLab CI uploads Linux artifacts and triggers this workflow
+# 3. This workflow builds macOS binaries
+# 4. This workflow uploads macOS artifacts to the existing release
+# 5. This workflow publishes the release (removes draft status)
+
+name: Build macOS Binaries
+
+on:
+  # Triggered by GitLab CI via API (primary)
+  repository_dispatch:
+    types: [build-macos]
+
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v0.6.0)"
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Intel Mac (older Macs, Rosetta 2 fallback)
+          - target: x86_64-apple-darwin
+            os: macos-13
+            arch: x86_64
+          # Apple Silicon (M1/M2/M3)
+          - target: aarch64-apple-darwin
+            os: macos-14
+            arch: aarch64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.ref || inputs.version }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            services/shebe-server/target
+          key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.target }}-cargo-
+
+      - name: Build and package
+        id: build
+        run: ./scripts/ci-github-build.sh --target ${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shebe-darwin-${{ matrix.arch }}
+          path: |
+            shebe-*.tar.gz
+            shebe-*.tar.gz.sha256
+          retention-days: 7
+
+  release:
+    name: Upload to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout source (for Cargo.toml)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.client_payload.ref || inputs.version || 'main' }}
+
+      - name: Extract version from Cargo.toml
+        id: version
+        working-directory: services/shebe-server
+        run: |
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "Extracted version: v${VERSION}"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          find artifacts -type f -ls 2>/dev/null || ls -laR artifacts
+
+      - name: Upload macOS artifacts to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Move artifacts to current directory
+          mv artifacts/* . 2>/dev/null || true
+
+          # For manual runs, create release if it doesn't exist
+          if ! gh release view "${VERSION}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Creating release ${VERSION} (manual run)..."
+            gh release create "${VERSION}" \
+              --repo "${{ github.repository }}" \
+              --title "Shebe ${VERSION}" \
+              --notes "macOS binaries for ${VERSION}." \
+              --draft \
+              *.tar.gz \
+              *.sha256
+          else
+            # Upload to existing release (created by GitLab CI)
+            echo "Uploading macOS artifacts to release ${VERSION}..."
+            gh release upload "${VERSION}" \
+              --repo "${{ github.repository }}" \
+              --clobber \
+              *.tar.gz \
+              *.sha256
+          fi
+
+          echo "macOS artifacts uploaded successfully"
+
+      - name: Publish release (remove draft status)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          echo "Publishing release ${VERSION}..."
+          gh release edit "${VERSION}" \
+            --repo "${{ github.repository }}" \
+            --draft=false
+
+          echo "Release published: https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
