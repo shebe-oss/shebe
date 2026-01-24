@@ -13,11 +13,10 @@ volumes:
   cargo-target:
     driver: local
   # Cargo cache volumes for musl builds (separate to avoid conflicts)
+  # Note: sccache handles compiled artifacts, but registry/git still need local cache
   cargo-registry-musl:
     driver: local
   cargo-git-musl:
-    driver: local
-  cargo-target-musl:
     driver: local
 
 networks:
@@ -28,7 +27,7 @@ services:
   # Primary development container (Debian/glibc)
   # Use for: tests, linting, formatting, debug builds
   shebe-dev:
-    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260118-b1.88-slim-trixie
+    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260123-b1.88-slim-trixie
     container_name: shebe-dev
     working_dir: /workspace
     volumes:
@@ -39,9 +38,7 @@ services:
       - cargo-git:/usr/local/cargo/git
       # Cache build artifacts (speeds up incremental builds)
       - cargo-target:/workspace/target
-    environment:
-      RUST_BACKTRACE: 1
-      CARGO_HOME: /usr/local/cargo
+    env_file: .env
     cap_add:
       - SYS_PTRACE
     security_opt:
@@ -50,20 +47,23 @@ services:
     tty: true
     command: bash
 
-  # Optional: Alpine/musl container for static binary builds
-  # Use for: testing static binary behavior, local MCPB creation
+  # Alpine/musl container for static binary builds with sccache
+  # Use for: testing sccache, release builds, MCPB creation
+  # Mirrors CI environment (uses sccache instead of local cargo cache volumes)
   shebe-dev-musl:
-    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260119-b1.88-alpine3.22-rc
+    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260123-b1.88-slim-trixie
     container_name: shebe-dev-musl
     working_dir: /workspace
     volumes:
       - ../services/shebe-server:/workspace:rw
+      # Cache cargo registry and git checkouts (sccache doesn't handle these)
       - cargo-registry-musl:/usr/local/cargo/registry
       - cargo-git-musl:/usr/local/cargo/git
-      - cargo-target-musl:/workspace/target
-    environment:
-      RUST_BACKTRACE: 1
-      CARGO_HOME: /usr/local/cargo
+      # Entrypoint script for sccache lifecycle management
+      - ./entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+      # Local rci binary for testing (temporary)
+      - /tmp/rci-musl:/usr/local/bin/rci:ro
+    env_file: .env
     stdin_open: true
     tty: true
     command: /bin/bash
