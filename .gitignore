@@ -29,7 +29,7 @@ RELEASE_NOTES.md
 
 # Rust
 target/
-Cargo.lock
+# Cargo.lock
 **/*.rs.bk
 *.pdb
 coverage/

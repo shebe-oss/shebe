@@ -23,49 +23,50 @@ PROJECT_DIR ?= $(PWD)
 
 
 # DEVELOPMENT TARGETS ----------------------------------------------------------
-# All local Rust commands run in shebe-dev container for consistency with CI/CD
 # shebe-dev: Debian/glibc for tests, linting, formatting
-# shebe-dev-musl: Alpine/musl for static binary builds (optional)
-DOCKER_RUN := docker compose --file ${PROJECT_DIR}/deploy/docker-compose.yml run --rm shebe-dev
-DOCKER_RUN_MUSL := docker compose --file ${PROJECT_DIR}/deploy/docker-compose.yml run --rm shebe-dev-musl
+# shebe-dev-musl: Alpine/musl for static builds with sccache (mirrors CI)
+COMPOSE := docker compose --file ${PROJECT_DIR}/deploy/docker-compose.yml run --rm
+RUN_DEV := $(COMPOSE) shebe-dev
+RUN_MUSL := $(COMPOSE) shebe-dev-musl entrypoint.sh with-sccache
+RUN_MUSL_NO_CACHE := $(COMPOSE) shebe-dev-musl entrypoint.sh without-sccache
 
 
 # Build targets
 build:
 	@echo "Building in shebe-dev container..."
-	$(DOCKER_RUN) cargo build
+	$(RUN_DEV) cargo build
 
 build-release:
 	@echo "Building release in shebe-dev container..."
-	$(DOCKER_RUN) cargo build --release
+	$(RUN_DEV) cargo build --release
 
 # Test and quality targets
 test:
 	@echo "Running tests in shebe-dev container..."
-	$(DOCKER_RUN) cargo nextest run --color=always
+	$(RUN_DEV) cargo nextest run --color=always
 
 test-coverage:
 	@echo "Running tests with coverage in shebe-dev container..."
-	$(DOCKER_RUN) cargo tarpaulin --all-features --workspace --out Xml --output-dir . --fail-under 70
+	$(RUN_DEV) cargo tarpaulin --all-features --workspace --out Xml --output-dir . --fail-under 70
 
 fix:
-	$(DOCKER_RUN) cargo fix --package shebe --verbose --allow-no-vcs
+	$(RUN_DEV) cargo fix --package shebe --verbose --allow-no-vcs
 
 fmt:
 	@echo "Formatting code in shebe-dev container..."
-	$(DOCKER_RUN) cargo fmt
+	$(RUN_DEV) cargo fmt
 
 fmt-check:
 	@echo "Checking code formatting in shebe-dev container..."
-	$(DOCKER_RUN) cargo fmt -- --check --verbose
+	$(RUN_DEV) cargo fmt -- --check --verbose
 
 clippy:
 	@echo "Running clippy in shebe-dev container..."
-	$(DOCKER_RUN) cargo clippy --no-deps -- -D warnings
+	$(RUN_DEV) cargo clippy --no-deps -- -D warnings
 
 check:
 	@echo "Running cargo check in shebe-dev container..."
-	$(DOCKER_RUN) cargo check
+	$(RUN_DEV) cargo check
 
 ci: test fmt clippy check
 
@@ -74,14 +75,36 @@ shell:
 	@echo "Starting interactive shell in shebe-dev container..."
 	cd deploy && docker compose run --rm shebe-dev bash
 
-# Musl/static build targets (optional - for testing static binaries)
+## ------------------------------------------------------------------------------------
+##                           BUILD TARGETS
+## ------------------------------------------------------------------------------------
+
+# Musl/static build targets with sccache (mirrors CI environment)
 build-musl:
-	@echo "Building static musl binary in shebe-dev-musl container..."
-	$(DOCKER_RUN_MUSL) cargo build --release
+	$(RUN_MUSL) cargo build --release
+
+build-musl-no-cache:
+	$(RUN_MUSL_NO_CACHE) cargo build --release
 
 shell-musl:
-	@echo "Starting interactive shell in shebe-dev-musl container..."
-	cd deploy && docker compose run --rm shebe-dev-musl /bin/bash
+	$(COMPOSE) shebe-dev-musl entrypoint.sh with-sccache bash
+
+shell-musl-no-cache:
+	$(COMPOSE) shebe-dev-musl bash
+
+# rci targets (mirrors CI pipeline)
+rci-build:
+	$(RUN_MUSL) rci build --service-dir . --suffix linux-x86_64-musl
+
+rci-build-no-cache:
+	$(RUN_MUSL_NO_CACHE) rci build --service-dir . --suffix linux-x86_64-musl
+
+rci-mcpb:
+	$(RUN_MUSL) rci mcpb create --service-dir .
+
+# sccache validation
+sccache-test:
+	$(RUN_MUSL) cargo build --release
 
 # Clean Docker artifacts
 clean:
@@ -109,7 +132,7 @@ MCP_BINARY := $(BUILD_DIR)/shebe-mcp
 
 shebe-build:
 	@echo "Building shebe and shebe-mcp in shebe-dev container..."
-	$(DOCKER_RUN) cargo build --release --target-dir /workspace/build
+	$(RUN_DEV) cargo build --release --target-dir /workspace/build
 
 shebe-install: shebe-build
 	@echo "Installing $(CLI_VERSIONED_NAME) to /usr/local/lib/..."
@@ -172,9 +195,15 @@ help:
 	@echo "  shell                Open interactive shell in shebe-dev"
 	@echo "  clean                Clean Docker volumes"
 	@echo ""
-	@echo "Musl/Static Targets (shebe-dev-musl container - Alpine/musl):"
-	@echo "  build-musl           Build static musl binary"
-	@echo "  shell-musl           Open interactive shell in shebe-dev-musl"
+	@echo "Musl + sccache Targets (shebe-dev-musl - mirrors CI):"
+	@echo "  build-musl           Build with sccache"
+	@echo "  build-musl-no-cache  Build without sccache"
+	@echo "  shell-musl           Shell with sccache"
+	@echo "  shell-musl-no-cache  Shell without sccache"
+	@echo "  rci-build            rci build with sccache"
+	@echo "  rci-build-no-cache   rci build without sccache"
+	@echo "  rci-mcpb             rci mcpb create"
+	@echo "  sccache-test         Test sccache"
 	@echo ""
 	@echo "Shebe Binaries (shebe-dev container):"
 	@echo "  shebe-build          Build shebe (CLI) and shebe-mcp binaries"
