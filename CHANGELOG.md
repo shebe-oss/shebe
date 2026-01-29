@@ -5,7 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.7] - 2026-01-29
+
+### Security
+- Pin `oneshot >= 0.1.12` to fix use-after-free race condition (faern/oneshot#74)
+  - Receiver polled then dropped could read freed channel memory
+  - Transitive dependency via tantivy; pinned as direct dependency in Cargo.toml
+  - Cargo.lock updated: oneshot 0.1.11 -> 0.1.13
+
+### Changed
+- CI/CD pipeline improvements
+  - Split test and coverage into separate jobs (`test:shebe` and `coverage:shebe`)
+  - Inline CI rule definitions replacing YAML anchored change refs
+  - Coverage job runs only on main branch merges
+  - `build:macos` moved to release stage with manual trigger
+  - `publish:mcp-registry` now depends on `release:shebe`
+  - Coverage threshold adjusted to 70%
 
 ### Fixed
 - MCP server notification handling per JSON-RPC 2.0 spec
