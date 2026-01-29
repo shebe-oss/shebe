@@ -1,6 +1,6 @@
 # Shebe
 
-[![pipeline status](https://gitlab.com/rhobimd-oss/shebe-releases/badges/main/pipeline.svg)](https://gitlab.com/rhobimd-oss/shebe-releases/-/commits/main) [![coverage report](https://gitlab.com/rhobimd-oss/shebe-releases/badges/main/coverage.svg)](https://gitlab.com/rhobimd-oss/shebe-releases/-/commits/main) [![Latest Release](https://gitlab.com/rhobimd-oss/shebe-releases/-/badges/release.svg)](https://gitlab.com/rhobimd-oss/shebe-releases/-/releases)
+[![pipeline status](https://gitlab.com/rhobimd-oss/shebe/badges/main/pipeline.svg)](https://gitlab.com/rhobimd-oss/shebe/-/commits/main) [![coverage report](https://gitlab.com/rhobimd-oss/shebe/badges/main/coverage.svg)](https://gitlab.com/rhobimd-oss/shebe/-/commits/main) [![Latest Release](https://gitlab.com/rhobimd-oss/shebe/-/badges/release.svg)](https://gitlab.com/rhobimd-oss/shebe/-/releases)
 
 **Fast Code Search via BM25**
 
