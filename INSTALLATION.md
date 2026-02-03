@@ -11,15 +11,27 @@ The recommended install method. Installs both `shebe` (CLI) and
 `shebe-mcp` (MCP server) binaries.
 
 ```bash
-brew tap shebe-oss/homebrew-tap \
-  https://github.com/shebe-oss/homebrew-tap
+brew tap shebe-oss/tap
 brew install shebe
 ```
 
-Upgrade after a new release:
+See the [homebrew-tap repository](https://github.com/shebe-oss/homebrew-tap) for
+supported platforms, bottle availability and troubleshooting.
+
+### Upgrade
 
 ```bash
 brew update && brew upgrade shebe
+```
+
+### Uninstall
+
+```bash
+# Remove shebe binaries
+brew uninstall shebe
+
+# Optional: remove the tap if no longer needed
+brew untap shebe-oss/tap
 ```
 
 ---
@@ -29,13 +41,16 @@ brew update && brew upgrade shebe
 Pre-built binaries from GitHub releases:
 
 ```bash
-export SHEBE_VERSION=0.5.8
-curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
-tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
+export SHEBE_VERSION=v0.5.8
+curl -LO "https://github.com/shebe-oss/shebe/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz"
+curl -LO "https://github.com/shebe-oss/shebe/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256"
+
+sha256sum -c shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256
+tar -xzf shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/
 ```
 
-See [GitHub Releases](https://github.com/shebe-oss/shebe-releases/releases)
+See [GitHub Releases](https://github.com/shebe-oss/shebe/releases)
 for all platforms.
 
 ---
@@ -45,12 +60,12 @@ for all platforms.
 Pre-built binaries from the GitLab package registry:
 
 ```bash
-export SHEBE_VERSION=0.5.8
-curl -LO "https://gitlab.com/api/v4/projects/75748935/packages/generic/shebe/${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
-curl -LO "https://gitlab.com/api/v4/projects/75748935/packages/generic/shebe/${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256"
+export SHEBE_VERSION=v0.5.8
+curl -LO "https://gitlab.com/shebe-oss/shebe/-/releases/${SHEBE_VERSION}/downloads/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz"
+curl -LO "https://gitlab.com/shebe-oss/shebe/-/releases/${SHEBE_VERSION}/downloads/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256"
 
-sha256sum -c shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256
-tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
+sha256sum -c shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256
+tar -xzf shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/
 ```
 
@@ -159,14 +174,14 @@ Expected: JSON response with server capabilities and 14 MCP tools.
 
 After installation, configure Shebe for your use case:
 
-| Task | Documentation |
-|------|---------------|
-| Configure Claude Code integration | [docs/guides/mcp-quick-start.md](./docs/guides/mcp-quick-start.md) |
-| Full MCP setup guide | [docs/guides/mcp-setup-guide.md](./docs/guides/mcp-setup-guide.md) |
-| Configuration options | [CONFIGURATION.md](./CONFIGURATION.md) |
-| CLI usage | [docs/guides/cli-usage.md](./docs/guides/cli-usage.md) |
-| MCP tools reference | [docs/guides/mcp-tools-reference.md](./docs/guides/mcp-tools-reference.md) |
-| Performance benchmarks | [docs/Performance.md](./docs/Performance.md) |
+| Task                   | Documentation                                                      |
+|------------------------|--------------------------------------------------------------------|
+| MCP quickstart         | [docs/guides/mcp-quick-start.md](./docs/guides/mcp-quick-start.md) |
+| Full MCP setup guide   | [docs/guides/mcp-setup-guide.md](./docs/guides/mcp-setup-guide.md) |
+| Configuration options  | [CONFIGURATION.md](./CONFIGURATION.md)                             |
+| CLI usage              | [docs/guides/cli-usage.md](./docs/guides/cli-usage.md)             |
+| MCP tools reference    | [docs/guides/mcp-tools-reference.md](./docs/guides/mcp-tools-reference.md) |
+| Performance benchmarks | [docs/Performance.md](./docs/Performance.md)                       |
 
 ---
 
@@ -179,7 +194,7 @@ After installation, configure Shebe for your use case:
 echo $PATH | tr ':' '\n' | grep -E '(local/bin|usr/bin)'
 
 # Use absolute path if needed
-/usr/local/bin/shebe-mcp --help
+/usr/local/bin/shebe --help
 ```
 
 ### Permission denied

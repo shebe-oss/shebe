@@ -68,7 +68,6 @@ for benchmarks.
 - [Contributing](#contributing)
 
 
-
 ---
 
 ## Quick Start
@@ -78,16 +77,22 @@ for benchmarks.
 **Homebrew (macOS and Linux):**
 
 ```bash
-brew tap shebe-oss \
+brew tap shebe-oss/tap
 brew install shebe
 ```
+
+See the [homebrew-tap repository](https://github.com/shebe-oss/homebrew-tap) for
+supported platforms and troubleshooting.
 
 **Manual download (Linux x86_64):**
 
 ```bash
-export SHEBE_VERSION=0.5.8
-curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
-tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
+export SHEBE_VERSION=v0.5.8
+curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz"
+curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256"
+
+sha256sum -c shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256
+tar -xzf shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/
 ```
 
