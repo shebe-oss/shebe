@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Repository migrated from `rhobimd-oss` to `shebe-oss` GitLab group
+  - GitLab: `gitlab.com/rhobimd-oss/shebe` -> `gitlab.com/shebe-oss/shebe`
+  - GitHub releases: `github.com/rhobimd-oss/shebe-releases` -> `github.com/shebe-oss/shebe-releases`
+  - Homebrew tap: `rhobimd-oss/shebe-releases` -> `shebe-oss`
+  - Updated all documentation URLs and CI/CD references
+
 ## [0.5.7] - 2026-01-29
 
 ### Security
@@ -262,16 +271,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 130 total tests (79 unit, 7 integration, 37 UTF-8, 3 doc)
 - OpenEMR validation: 4,210 files indexed successfully
 
-[Unreleased]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.5.6...HEAD
-[0.5.6]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.5.5...v0.5.6
-[0.5.5]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.5.4...v0.5.5
-[0.5.4]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.5.3...v0.5.4
-[0.5.3]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.5.2...v0.5.3
-[0.5.2]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.5.1...v0.5.2
-[0.5.1]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.5.0...v0.5.1
-[0.5.0]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.4.1...v0.5.0
-[0.4.1]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.4.0...v0.4.1
-[0.4.0]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.3.0...v0.4.0
-[0.3.0]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.2.0...v0.3.0
-[0.2.0]: https://gitlab.com/rhobimd-oss/shebe/-/compare/v0.1.0...v0.2.0
-[0.1.0]: https://gitlab.com/rhobimd-oss/shebe/-/tags/v0.1.0
+[Unreleased]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.7...HEAD
+[0.5.7]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.6...v0.5.7
+[0.5.6]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.5...v0.5.6
+[0.5.5]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.4...v0.5.5
+[0.5.4]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.3...v0.5.4
+[0.5.3]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.2...v0.5.3
+[0.5.2]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.1...v0.5.2
+[0.5.1]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.0...v0.5.1
+[0.5.0]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.4.1...v0.5.0
+[0.4.1]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.4.0...v0.4.1
+[0.4.0]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.3.0...v0.4.0
+[0.3.0]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.2.0...v0.3.0
+[0.2.0]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.1.0...v0.2.0
+[0.1.0]: https://gitlab.com/shebe-oss/shebe/-/tags/v0.1.0

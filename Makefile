@@ -9,7 +9,7 @@ SHELL := bash
 
 # STATIC VARS
 REGISTRY_URL := registry.gitlab.com
-IMAGE_NAME := rhobimd-oss/shebe
+IMAGE_NAME := shebe-oss/shebe
 IMAGE_TAG ?= $(shell cat services/shebe-server/VERSION 2>/dev/null || echo "latest")
 CONTAINER_NAME := shebe-server
 

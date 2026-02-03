@@ -22,7 +22,7 @@ Please do not create a public GitLab issue for security vulnerabilities, as this
 
 Report the vulnerability using one of these methods:
 
-- **Confidential Issue:** Create a confidential issue on GitLab at https://gitlab.com/rhobimd-oss/shebe/-/issues/new
+- **Confidential Issue:** Create a confidential issue on GitLab at https://gitlab.com/shebe-oss/shebe/-/issues/new
   - Select "This issue is confidential"
   - Use the label `security`
 
@@ -119,7 +119,7 @@ Security updates will be released as:
 - **Minor releases** if breaking changes are required
 
 Subscribe to releases on GitLab to stay informed:
-https://gitlab.com/rhobimd-oss/shebe/-/releases
+https://gitlab.com/shebe-oss/shebe/-/releases
 
 ## Acknowledgments
 

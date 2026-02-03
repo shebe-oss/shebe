@@ -171,7 +171,7 @@ Triggers GitHub Actions to build macOS binaries. Runs after `build:linux`.
 
 **Required Variables:**
 - `SHEBE_GITHUB_TOKEN` - GitHub Personal Access Token with repo scope
-- `SHEBE_GITHUB_REPO` - Target repository (default: `rhobimd-oss/shebe`)
+- `SHEBE_GITHUB_REPO` - Target repository (default: `shebe-oss/shebe`)
 
 ---
 
@@ -275,7 +275,7 @@ The script:
 
 1. Go to GitHub Settings > Developer settings > Personal access tokens > Fine-grained tokens
 2. Create token with:
-   - **Repository access:** `rhobimd-oss/shebe`
+   - **Repository access:** `shebe-oss/shebe`
    - **Permissions:** Contents (read/write), Actions (read/write)
 3. Add to GitLab: Settings > CI/CD > Variables
    - Key: `SHEBE_GITHUB_TOKEN`
@@ -357,8 +357,8 @@ shebe-v0.6.0-linux-x86_64/
    - GitHub Actions publishes final release
 
 5. **Verify releases:**
-   - GitLab: https://gitlab.com/rhobimd-oss/shebe/-/releases
-   - GitHub: https://github.com/rhobimd-oss/shebe/releases
+   - GitLab: https://gitlab.com/shebe-oss/shebe/-/releases
+   - GitHub: https://github.com/shebe-oss/shebe/releases
 
 ### Release Checklist
 
@@ -392,7 +392,7 @@ gitlab-ci-lint .gitlab-ci.yml
 
 # Test GitHub API access (requires SHEBE_GITHUB_TOKEN env var)
 curl -H "Authorization: Bearer $SHEBE_GITHUB_TOKEN" \
-  https://api.github.com/repos/rhobimd-oss/shebe/releases
+  https://api.github.com/repos/shebe-oss/shebe/releases
 
 # Verify tag exists on both remotes
 git ls-remote origin --tags v0.6.0

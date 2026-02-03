@@ -11,8 +11,8 @@ The recommended install method. Installs both `shebe` (CLI) and
 `shebe-mcp` (MCP server) binaries.
 
 ```bash
-brew tap rhobimd-oss/shebe-releases \
-  https://github.com/rhobimd-oss/shebe-releases
+brew tap shebe-oss/homebrew-tap \
+  https://github.com/shebe-oss/homebrew-tap
 brew install shebe
 ```
 
@@ -30,12 +30,12 @@ Pre-built binaries from GitHub releases:
 
 ```bash
 export SHEBE_VERSION=0.5.7
-curl -LO "https://github.com/rhobimd-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
+curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
 tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/
 ```
 
-See [GitHub Releases](https://github.com/rhobimd-oss/shebe-releases/releases)
+See [GitHub Releases](https://github.com/shebe-oss/shebe-releases/releases)
 for all platforms.
 
 ---
@@ -54,7 +54,7 @@ tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/
 ```
 
-See [GitLab Releases](https://gitlab.com/rhobimd-oss/shebe/-/releases)
+See [GitLab Releases](https://gitlab.com/shebe-oss/shebe/-/releases)
 for all platforms.
 
 ---
@@ -80,7 +80,7 @@ Search for "Shebe" in Zed's extension panel, or add to
 
 ### Other Editors
 
-See the [shebe-releases](https://github.com/rhobimd-oss/shebe-releases)
+See the [shebe-releases](https://github.com/shebe-oss/shebe-releases)
 repository for VS Code and other editor extensions.
 
 ---
@@ -111,7 +111,7 @@ Required for macOS, Windows, or the latest development version.
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/rhobimd-oss/shebe.git
+git clone https://gitlab.com/shebe-oss/shebe.git
 cd shebe
 
 # Build release binaries (uses Docker for consistency)

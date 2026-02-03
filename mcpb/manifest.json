@@ -8,8 +8,8 @@
     "name": "RHOBIMD",
     "url": "https://oss.rhobimd.health"
   },
-  "repository": "https://gitlab.com/rhobimd-oss/shebe",
-  "homepage": "https://gitlab.com/rhobimd-oss/shebe",
+  "repository": "https://gitlab.com/shebe-oss/shebe",
+  "homepage": "https://gitlab.com/shebe-oss/shebe",
   "license": "Apache-2.0",
   "server": {
     "type": "binary",

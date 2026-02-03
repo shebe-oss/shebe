@@ -142,7 +142,7 @@ search result chunks with visual boundaries and line numbers.
 - Retrieves chunk metadata from Tantivy
 - Converts byte offsets to line numbers
 
-Contributes-to: rhobimd-oss/shebe
+Contributes-to: shebe-oss/shebe
 
 Signed-off-by: OSS Contributor <oss.contributor@example.org>
 
@@ -279,9 +279,9 @@ cargo bench
 
 ## Getting Help
 
-- **Issues:** https://gitlab.com/rhobimd-oss/shebe/-/issues
-- **Discussions:** https://gitlab.com/rhobimd-oss/shebe/-/discussions
-- **Documentation:** https://gitlab.com/rhobimd-oss/shebe
+- **Issues:** https://gitlab.com/shebe-oss/shebe/-/issues
+- **Discussions:** https://gitlab.com/shebe-oss/shebe/-/discussions
+- **Documentation:** https://gitlab.com/shebe-oss/shebe
 
 ---
 
