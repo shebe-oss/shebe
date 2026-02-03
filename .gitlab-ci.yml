@@ -69,6 +69,7 @@ variables:
 # Rules for tag-based releases
 .release-rules: &release-rules
   - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
+    when: manual
 
 ## CACHE ======================================================================
 .deps-cache: &deps-cache
@@ -243,12 +244,11 @@ build:macos:
   timeout: 5m
   variables:
     GIT_STRATEGY: fetch
+    GIT_DEPTH: 0
   needs:
     - job: build:linux
       artifacts: false
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
-      when: manual
+  rules: *release-rules
   script:
     - |
       set -euo pipefail
@@ -295,9 +295,7 @@ release:shebe:
       artifacts: true
     - job: build:macos
       artifacts: false
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
-      when: manual
+  rules: *release-rules
   variables:
     GIT_STRATEGY: fetch
     GIT_DEPTH: 0
@@ -305,7 +303,7 @@ release:shebe:
     - git config --global --add safe.directory "${CI_PROJECT_DIR}"
   script:
     - rci release gitlab --service-dir services/shebe-server --force
-    - rci release github --service-dir services/shebe-server --force
+    - rci release github --service-dir services/shebe-server
 
 #--------------------------------------------------------------------------------------
 # Publish to MCP Registry (Manual Trigger)
@@ -323,10 +321,9 @@ publish:mcp-registry:
   stage: publish
   needs:
     - job: release:shebe
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
-      when: manual
+  rules: *release-rules
   variables:
     GIT_STRATEGY: fetch
+    GIT_DEPTH: 0
   script:
     - rci mcpb publish --from-registry

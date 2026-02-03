@@ -4,8 +4,8 @@ Get Shebe MCP running with Claude Code in 5 minutes.
 
 **Time:** 5 minutes | **Difficulty:** Beginner
 
-**Shebe Version:** 0.5.3 <br>
-**Document Version:** 1.1 <br>
+**Shebe Version:** 0.5.8 <br>
+**Document Version:** 1.2 <br>
 **Created:** 2025-10-21 <br>
 
 ---

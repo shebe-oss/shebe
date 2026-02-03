@@ -3,8 +3,8 @@
 
 Complete API reference for all Shebe MCP tools.
 
-**Shebe Version:** 0.5.0 <br>
-**Document Version:** 2.0 <br>
+**Shebe Version:** 0.5.8 <br>
+**Document Version:** 2.1 <br>
 **Created:** 2025-10-21 <br>
 **Protocol:** JSON-RPC 2.0 over stdio <br>
 **Format:** Markdown responses <br>

@@ -4,8 +4,8 @@ Complete reference for the `shebe` command-line interface.
 
 **Time:** 10 minutes | **Difficulty:** Beginner
 
-**Shebe Version:** 0.5.4 <br>
-**Document Version:** 1.0 <br>
+**Shebe Version:** 0.5.8 <br>
+**Document Version:** 1.1 <br>
 **Created:** 2026-01-16 <br>
 
 ---
@@ -312,7 +312,7 @@ shebe get-server-info --format json
 ```
 Shebe Code Search Engine
 
-Version: 0.5.4
+Version: 0.5.8
 Protocol: MCP 2024-11-05
 Tools: 14
 
