@@ -85,7 +85,7 @@ brew install shebe
 **Manual download (Linux x86_64):**
 
 ```bash
-export SHEBE_VERSION=0.5.7
+export SHEBE_VERSION=0.5.8
 curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
 tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/

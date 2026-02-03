@@ -1,7 +1,7 @@
 # Shebe Installation Guide
 
-**Version:** 0.5.7
-**Last Updated:** 2026-02-01
+**Version:** 0.5.8
+**Last Updated:** 2026-02-03
 
 ---
 
@@ -29,7 +29,7 @@ brew update && brew upgrade shebe
 Pre-built binaries from GitHub releases:
 
 ```bash
-export SHEBE_VERSION=0.5.7
+export SHEBE_VERSION=0.5.8
 curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
 tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/
@@ -45,7 +45,7 @@ for all platforms.
 Pre-built binaries from the GitLab package registry:
 
 ```bash
-export SHEBE_VERSION=0.5.7
+export SHEBE_VERSION=0.5.8
 curl -LO "https://gitlab.com/api/v4/projects/75748935/packages/generic/shebe/${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
 curl -LO "https://gitlab.com/api/v4/projects/75748935/packages/generic/shebe/${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256"
 

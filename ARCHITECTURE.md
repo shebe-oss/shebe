@@ -2,8 +2,8 @@
 
 **Content Search for Code - Developer's Guide to the Codebase**
 
-**Version:** 0.5.4 <br>
-**Updated:** 2026-01-16 <br>
+**Version:** 0.5.8 <br>
+**Updated:** 2026-02-03 <br>
 **Status:** 14 MCP Tools, 10 CLI Commands, 397 Tests (Production Ready)
 
 
@@ -460,8 +460,8 @@ ShebeError -> McpError -> JSON-RPC error
 ---
 
 **Document Status:** Living document
-**Version:** 0.5.4 (14 MCP tools, 10 CLI commands, 397 tests)
-**Updated:** 2026-01-16
+**Version:** 0.5.8 (14 MCP tools, 10 CLI commands, 397 tests)
+**Updated:** 2026-02-03
 **Performance:** Validated with 30/30 test scenarios (100% success rate)
 - **Indexing:** 1,928-11,210 files/sec (Istio: 5,605 files in 0.5s, OpenEMR: 6,364 files in 3.3s)
 - **Search:** 2ms latency, 210-650 tokens/query, 11 file types in single query

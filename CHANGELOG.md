@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-02-03
+
 ### Changed
 - Repository migrated from `rhobimd-oss` to `shebe-oss` GitLab group
   - GitLab: `gitlab.com/rhobimd-oss/shebe` -> `gitlab.com/shebe-oss/shebe`
@@ -271,7 +273,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 130 total tests (79 unit, 7 integration, 37 UTF-8, 3 doc)
 - OpenEMR validation: 4,210 files indexed successfully
 
-[Unreleased]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.7...HEAD
+[Unreleased]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.8...HEAD
+[0.5.8]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.7...v0.5.8
 [0.5.7]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.6...v0.5.7
 [0.5.6]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.5...v0.5.6
 [0.5.5]: https://gitlab.com/shebe-oss/shebe/-/compare/v0.5.4...v0.5.5
