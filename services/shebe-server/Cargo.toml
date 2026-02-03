@@ -1,14 +1,14 @@
 [package]
 name = "shebe"
-version = "0.5.7"
+version = "0.5.8-rc"
 edition = "2021"
 rust-version = "1.88"
 authors = ["RHOBIMD HEALTH"]
-description = "BM25-based code search engine with MCP integration for Claude Code"
+description = "BM25-based code search engine with CLI and MCP integration for coding agents"
 license = "Apache-2.0"
-repository = "https://gitlab.com/rhobimd-oss/shebe"
-homepage = "https://gitlab.com/rhobimd-oss/shebe"
-documentation = "https://gitlab.com/rhobimd-oss/shebe"
+repository = "https://gitlab.com/shebe-oss/shebe"
+homepage = "https://gitlab.com/shebe-oss/shebe"
+documentation = "https://gitlab.com/shebe-oss/shebe"
 keywords = ["search", "bm25", "rag", "code-search", "mcp"]
 categories = ["command-line-utilities", "development-tools"]
 

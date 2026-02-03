@@ -35,7 +35,7 @@ variables:
   RUST_BACKTRACE: "1"
   RUSTC_WRAPPER: /usr/local/bin/sccache
   SHEBE_SERVICE_DIR: services/shebe-server
-  SHEBE_GITHUB_REPO: "rhobimd-oss/shebe"
+  SHEBE_GITHUB_REPO: "shebe-oss/shebe"
   # sccache S3-compatible configuration (DigitalOcean Spaces)
   # Credentials set at rhobimd-oss group level
   # SCCACHE_BUCKET: ${SCCACHE_BUCKET}

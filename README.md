@@ -1,6 +1,6 @@
 # Shebe
 
-[![pipeline status](https://gitlab.com/rhobimd-oss/shebe/badges/main/pipeline.svg)](https://gitlab.com/rhobimd-oss/shebe/-/commits/main) [![coverage report](https://gitlab.com/rhobimd-oss/shebe/badges/main/coverage.svg)](https://gitlab.com/rhobimd-oss/shebe/-/commits/main) [![Latest Release](https://gitlab.com/rhobimd-oss/shebe/-/badges/release.svg)](https://gitlab.com/rhobimd-oss/shebe/-/releases)
+[![pipeline status](https://gitlab.com/shebe-oss/shebe/badges/main/pipeline.svg)](https://gitlab.com/shebe-oss/shebe/-/commits/main) [![coverage report](https://gitlab.com/shebe-oss/shebe/badges/main/coverage.svg)](https://gitlab.com/shebe-oss/shebe/-/commits/main) [![Latest Release](https://gitlab.com/shebe-oss/shebe/-/badges/release.svg)](https://gitlab.com/shebe-oss/shebe/-/releases)
 
 ![Shebe find_references example](docs/images/find-references-example.webp)
 
@@ -10,7 +10,7 @@ Shebe is a fast and simple local code-search tool powered by BM25. No embeddings
 No GPU, No cloud.
 
 Research shows [70-85% of developer code search][research-1] value comes from
-keyword-based queries. Developers search with exact terms they know:
+keyword-based queries. Developers tend to search with exact terms they know:
 function names, API calls, error messages. [BM25 excels at this][research-2].
 
 **Trade-offs:**
@@ -78,8 +78,7 @@ for benchmarks.
 **Homebrew (macOS and Linux):**
 
 ```bash
-brew tap rhobimd-oss/shebe-releases \
-  https://github.com/rhobimd-oss/shebe-releases
+brew tap shebe-oss \
 brew install shebe
 ```
 
@@ -87,7 +86,7 @@ brew install shebe
 
 ```bash
 export SHEBE_VERSION=0.5.7
-curl -LO "https://github.com/rhobimd-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
+curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/v${SHEBE_VERSION}/shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz"
 tar -xzf shebe-v${SHEBE_VERSION}-linux-x86_64.tar.gz
 sudo mv shebe shebe-mcp /usr/local/bin/
 ```
