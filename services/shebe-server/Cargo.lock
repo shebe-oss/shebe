@@ -1336,9 +1336,10 @@ dependencies = [
 
 [[package]]
 name = "shebe"
-version = "0.5.8"
+version = "0.5.9-rc"
 dependencies = [
  "async-trait",
+ "base64",
  "chrono",
  "clap",
  "clap_complete",

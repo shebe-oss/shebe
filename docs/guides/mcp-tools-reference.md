@@ -911,21 +911,25 @@ Checks include/exclude patterns to diagnose issue
 
 **Available since:** v0.7.0
 
-List all files indexed in a session with automatic truncation for large repositories.
+List all files indexed in a session with cursor-based pagination
+for large repositories.
 
 ### Description
 
-Returns a list of all indexed files in a session, sorted alphabetically by default. Auto-truncates
-to 500 files maximum to stay under the MCP 25k token limit. Shows a clear warning message when
-truncation occurs with suggestions for alternative approaches.
+Returns a list of all indexed files in a session, sorted alphabetically
+by default. Auto-truncates to 500 files max per page to stay under the
+MCP 25k token limit. Supports cursor-based pagination for navigating
+large file lists across multiple pages. Shows a warning when truncation
+occurs and provides a cursor for fetching the next page.
 
 ### Input Schema
 
-| Parameter | Type    | Required | Default | Constraints        | Description         |
-|-----------|---------|----------|---------|--------------------|---------------------|
-| session   | string  | Yes      | -       | ^[a-zA-Z0-9_-]+$   | Session ID          |
-| limit     | integer | No       | 100     | 1-500              | Max files to return |
-| sort      | string  | No       | "alpha" | alpha/size/indexed | Sort order          |
+| Parameter | Type    | Required | Default | Constraints        | Description                       |
+|-----------|---------|----------|---------|--------------------|-----------------------------------|
+| session   | string  | Yes      | -       | ^[a-zA-Z0-9_-]+$   | Session ID to list files from     |
+| limit     | integer | No       | 100     | 1-500              | Max files to return per page      |
+| sort      | string  | No       | "alpha" | alpha/size/indexed | Sort order                        |
+| cursor    | string  | No       | -       | Opaque string      | Pagination cursor from prev page  |
 
 ### Auto-Truncation Behavior
 
@@ -933,11 +937,14 @@ truncation occurs with suggestions for alternative approaches.
 **Maximum Limit:** 500 files (enforced even if user requests more)
 
 When a repository has more files than the limit, the tool:
-1. Returns only the first N files (sorted alphabetically by default)
-2. Shows a clear warning message at the top
-3. Provides suggestions for filtering (use `find_file`) or pagination
+1. Returns the first N files for the current page
+2. Shows a truncation warning on the first page only
+3. Provides a cursor string to fetch the next page
+4. Suggests using `find_file` for pattern-based filtering
 
-### Request Example
+### Request Examples
+
+**First page (no cursor):**
 
 ```json
 {
@@ -948,8 +955,27 @@ When a repository has more files than the limit, the tool:
     "name": "list_dir",
     "arguments": {
       "session": "large-repo",
-      "limit": 200,
+      "limit": 100,
       "sort": "alpha"
+    }
+  }
+}
+```
+
+**Next page (with cursor from previous response):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "method": "tools/call",
+  "params": {
+    "name": "list_dir",
+    "arguments": {
+      "session": "large-repo",
+      "limit": 100,
+      "sort": "alpha",
+      "cursor": "eyJsYXN0X2luZGV4Ijo5OSwic29ydCI6ImFscGhhIn0"
     }
   }
 }
@@ -958,8 +984,8 @@ When a repository has more files than the limit, the tool:
 ### Response Format (Without Truncation)
 
 ```markdown
-**Session:** small-repo
-**Files:** 50 (showing 50)
+**Session:** `small-repo`
+**Files:** 50 (showing 1-50)
 
 | File Path      | Chunks |
 |----------------|--------|
@@ -968,29 +994,49 @@ When a repository has more files than the limit, the tool:
 | `/Cargo.toml`  | 1 |
 ```
 
-### Response Format (With Truncation)
+### Response Format (With Truncation - First Page)
 
 ```markdown
 WARNING: OUTPUT TRUNCATED - MAXIMUM 500 FILES DISPLAYED
 
-Showing: 500 of 5,605 files (first 500, alphabetically sorted)
+Showing: 100 of 5,605 files (first 100, alphabetically sorted)
 Reason: Maximum display limit is 500 files (MCP 25k token limit)
-Not shown: 5,105 files
+Not shown: 5,505 files
 
 SUGGESTIONS:
-- Use `find_file` with patterns to filter: find_file(session="large-repo", pattern="*.yaml")
-- For pagination support, see: docs/work-plans/011-phase02-mcp-pagination-implementation.md
+- Use the cursor parameter to page through all results
+- Use `find_file` with patterns to filter:
+  find_file(session="large-repo", pattern="*.yaml")
 - For full file list, use bash: find /path/to/repo -type f | sort
 
 ---
 
-**Files 1-500 (of 5,605 total):**
+**Files 1-100 (of 5,605 total):**
 
 | File Path | Chunks |
 |------------|--------|
 | `/src/api/auth.rs` | 4 |
 | `/src/api/handlers.rs` | 12 |
 ...
+
+NOTE: More results available.
+Use cursor="eyJsYXN0X2luZGV4Ijo5OSwic29ydCI6..." to fetch next page.
+```
+
+### Response Format (Subsequent Page)
+
+```markdown
+**Session:** `large-repo`
+**Files:** 5605 (showing 101-200)
+
+| File Path | Chunks |
+|------------|--------|
+| `/src/core/indexer.rs` | 8 |
+| `/src/core/parser.rs` | 6 |
+...
+
+NOTE: More results available.
+Use cursor="eyJsYXN0X2luZGV4IjoxOTksc29ydCI6..." to fetch next page.
 ```
 
 ### Sort Options
@@ -1009,37 +1055,83 @@ SUGGESTIONS:
 
 ### Error Codes
 
-| Code   | Message | Cause | Solution |
-|--------|---------|-------|----------|
-| -32602 | Invalid params | Missing session | Provide session ID |
-| -32001 | Session not found | Invalid session | Use list_sessions first |
-| -32603 | Internal error | Index read failure | Re-index session |
+| Code   | Message           | Cause              | Solution                     |
+|--------|-------------------|--------------------|------------------------------|
+| -32602 | Invalid params    | Missing session    | Provide session ID           |
+| -32602 | Invalid params    | Invalid cursor     | Omit cursor to start over    |
+| -32602 | Invalid params    | Sort mode mismatch | Use same sort as cursor page |
+| -32602 | Invalid params    | Stale cursor       | Session reindexed; omit cursor |
+| -32001 | Session not found | Invalid session    | Use list_sessions first      |
+| -32603 | Internal error    | Index read failure | Re-index session             |
+
+### Cursor-Based Pagination
+
+When a session has more files than the limit, the response includes
+a cursor string that can be passed to the next request to fetch the
+next page of results.
+
+**How cursors work:**
+
+1. First request: Omit the `cursor` parameter (starts from beginning)
+2. If more results exist, the response includes a cursor string
+3. Pass that cursor in the next request to get the next page
+4. Repeat until no cursor is returned (last page reached)
+
+**Cursor properties:**
+
+- Opaque base64-encoded string (do not parse or construct manually)
+- Encodes the last index, sort mode and a session fingerprint
+- Becomes stale if the session is reindexed (returns error)
+- Sort mode in cursor must match the sort parameter in the request
+
+**Staleness detection:**
+
+Cursors contain a session fingerprint (file count + chunk count +
+timestamp). If a session is reindexed between pages, the cursor
+becomes stale and returns an error:
+
+```
+Error: Cursor is stale (session was reindexed).
+Start from the first page by omitting the cursor.
+```
+
+**Pagination workflow:**
+
+```
+Page 1: list_dir(session="repo", limit=100)
+  -> Files 1-100, cursor="abc..."
+
+Page 2: list_dir(session="repo", limit=100, cursor="abc...")
+  -> Files 101-200, cursor="def..."
+
+Page 3: list_dir(session="repo", limit=100, cursor="def...")
+  -> Files 201-250, no cursor (last page)
+```
 
 ### Usage Examples
 
-**List files in small repo:**
+**List files in small repo (no pagination needed):**
 ```
 You: List all files in my-project session
 
 Claude: [Executes list_dir with session="my-project"]
-Shows all 42 files (no truncation warning)
+Shows all 42 files, no truncation warning, no cursor
 ```
 
-**List files in large repo (truncated):**
+**Page through large repo:**
 ```
 You: List all files in istio-main session
 
 Claude: [Executes list_dir with session="istio-main"]
-WARNING: OUTPUT TRUNCATED - showing 100 of 5,605 files
-Suggests using find_file for filtering
-```
+Shows files 1-100 of 5,605 with truncation warning.
+Response includes cursor for next page.
 
-**Custom limit:**
-```
-You: Show me the first 250 files in large-repo
+You: Show me the next page
 
-Claude: [Executes list_dir with session="large-repo", limit=250]
-Shows 250 files with truncation warning (5,605 total)
+Claude: [Executes list_dir with session="istio-main",
+  cursor="eyJsYXN0X2luZGV4Ijo5OS..."]
+Shows files 101-200 of 5,605 (no truncation warning
+on subsequent pages). Includes cursor for next page.
 ```
 
 **Sort by size:**
@@ -1052,10 +1144,16 @@ Lists files sorted by size (largest first)
 
 ### Best Practices
 
-1. **Use find_file for large repos:** Pattern-based filtering is more efficient
-2. **Start with default limit:** 100 files is usually enough for exploration
-3. **Check the warning:** If truncated, consider filtering approach
-4. **Use sort wisely:** `size` sort requires filesystem access (slower)
+1. **Use find_file for large repos:** Pattern-based filtering
+   is more efficient than paginating through all files
+2. **Start with default limit:** 100 files per page is usually
+   enough for exploration
+3. **Use cursors for completeness:** When you need to see all
+   files, paginate using the cursor rather than increasing limit
+4. **Keep sort consistent:** The cursor encodes the sort mode;
+   changing sort between pages returns an error
+5. **Use sort wisely:** `size` sort requires filesystem stat
+   calls (slower than `alpha`)
 
 ---
 
@@ -1063,32 +1161,47 @@ Lists files sorted by size (largest first)
 
 **Available since:** v0.7.0
 
-Read file contents from an indexed session with automatic truncation for large files.
+Read file contents from an indexed session with offset-based
+pagination for large files.
 
 ### Description
 
-Retrieves the full contents of a file from an indexed session. Auto-truncates to 20,000
-characters maximum to stay under the MCP 25k token limit. Shows a clear warning message
-when truncation occurs with the percentage shown and suggestions for alternatives.
+Retrieves file contents from an indexed session. Auto-truncates to
+20,000 characters max to stay under the MCP 25k token limit. Supports
+offset-based pagination for reading large files incrementally. Shows a
+warning when truncation occurs and provides the next offset to continue
+reading. Binary files are rejected. Returns Markdown-formatted code
+with syntax highlighting.
 
 ### Input Schema
 
-| Parameter  | Type   | Required | Constraints      | Description                        |
-|------------|--------|----------|------------------|------------------------------------|
-| session    | string | Yes      | ^[a-zA-Z0-9_-]+$ | Session ID                         |
-| file_path  | string | Yes      | Absolute path    | Path to file (from search results) |
+| Parameter  | Type    | Required | Default | Constraints        | Description                      |
+|------------|---------|----------|---------|--------------------|----------------------------------|
+| session    | string  | Yes      | -       | ^[a-zA-Z0-9_-]+$   | Session ID containing the file   |
+| file_path  | string  | Yes      | -       | Absolute path       | Path to file (from search/list)  |
+| max_size_kb| integer | No       | 1024    | 1-10240             | Max file size in KB              |
+| offset     | integer | No       | 0       | >= 0                | Byte offset to start reading     |
+| length     | integer | No       | 20000   | 1-20000             | Max bytes to read from offset    |
 
 ### Auto-Truncation Behavior
 
-**Maximum Characters:** 20,000 (approximately 5,000 tokens with 80% safety margin)
+**Maximum Characters:** 20,000 per read (approximately 5,000 tokens)
 
-When a file exceeds 20,000 characters, the tool:
-1. Reads only the first 20,000 characters
-2. Ensures UTF-8 character boundary safety (never splits multi-byte characters)
-3. Shows a warning with the percentage shown and suggestions
-4. Returns valid, syntax-highlighted code
+When reading without offset/length (default behavior):
+1. Reads only the first 20,000 characters if file is larger
+2. Ensures UTF-8 character boundary safety (never splits multi-byte)
+3. Shows a warning with percentage shown and suggestions
+4. Provides the next offset to continue reading
 
-### Request Example
+When reading with offset/length (pagination mode):
+1. Seeks to the byte offset and reads up to `length` bytes
+2. Adjusts start position if offset lands mid-UTF-8 character
+3. Ensures end truncation is UTF-8 safe
+4. Shows byte range info and next offset if more content remains
+
+### Request Examples
+
+**Read full file (default):**
 
 ```json
 {
@@ -1105,6 +1218,25 @@ When a file exceeds 20,000 characters, the tool:
 }
 ```
 
+**Read with offset (continue from previous truncation):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "method": "tools/call",
+  "params": {
+    "name": "read_file",
+    "arguments": {
+      "session": "openemr-main",
+      "file_path": "/src/database/migrations/001_initial.sql",
+      "offset": 20000,
+      "length": 10000
+    }
+  }
+}
+```
+
 ### Response Format (Without Truncation)
 
 ```markdown
@@ -1113,13 +1245,17 @@ When a file exceeds 20,000 characters, the tool:
 **Size:** 5.2 KB (120 lines)
 **Language:** rust
 
-use crate::error::AuthError;
+    ```rust
+    use crate::error::AuthError;
 
-pub fn authenticate(username: &str, password: &str) -> Result<Token, AuthError> {
-    // Authentication logic here
-    validate_credentials(username, password)?;
-    generate_token(username)
-}
+    pub fn authenticate(
+        username: &str,
+        password: &str,
+    ) -> Result<Token, AuthError> {
+        validate_credentials(username, password)?;
+        generate_token(username)
+    }
+    ```
 ```
 
 ### Response Format (With Truncation)
@@ -1131,7 +1267,8 @@ Showing: Characters 1-20000 of 634000 total (3.2%)
 Reason: Maximum display limit is 20000 characters (MCP 25k token limit)
 Not shown: 614000 characters
 
-💡 SUGGESTIONS:
+SUGGESTIONS:
+- Use offset parameter to read next chunk: offset=20000
 - Use `search_code` to find specific content in this file
 - Use `preview_chunk` to view specific sections
 - For full file, use bash: cat /path/to/large-file.sql
@@ -1141,13 +1278,35 @@ Not shown: 614000 characters
 **File:** `/src/database/migrations/001_initial.sql`
 **Showing:** First 20000 characters (~280 lines)
 
-```sql
--- Database initialization
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(255) NOT NULL,
+    ```sql
+    -- Database initialization
+    CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) NOT NULL,
+        ...
+    ```
+
+NOTE: More content available.
+Use offset=20000 to read next chunk.
+```
+
+### Response Format (With Offset)
+
+```markdown
+**File:** `/src/database/migrations/001_initial.sql`
+**Session:** `openemr-main`
+**Size:** 619.14 KB (showing bytes 20000-30000 of 634000)
+**Language:** sql (140 lines in chunk)
+
+    ```sql
+        email VARCHAR(255) UNIQUE,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
     ...
-[Content continues until 20,000 character limit]
+    ```
+
+NOTE: More content available.
+Use offset=30000 to read next chunk.
 ```
 
 ### UTF-8 Safety
@@ -1176,31 +1335,75 @@ The tool ensures UTF-8 character boundary safety when truncating:
 | -32001   | Invalid request   | File not found   | File deleted since indexing  |
 | -32001   | Invalid request   | Binary file      | File contains non-UTF-8 data |
 
+### Offset-Based Pagination
+
+When a file is larger than 20,000 characters, you can read it in
+chunks using the `offset` and `length` parameters.
+
+**How offset pagination works:**
+
+1. First read: Omit `offset` and `length` (reads from start)
+2. If truncated, the response shows the next offset to use
+3. Pass `offset` (and optionally `length`) in the next request
+4. Repeat until no "More content available" message appears
+
+**Pagination workflow:**
+
+```
+Chunk 1: read_file(session="repo", file_path="/big.sql")
+  -> Bytes 0-20000 of 50000
+  -> "Use offset=20000 to read next chunk."
+
+Chunk 2: read_file(..., offset=20000, length=20000)
+  -> Bytes 20000-40000 of 50000
+  -> "Use offset=40000 to read next chunk."
+
+Chunk 3: read_file(..., offset=40000, length=20000)
+  -> Bytes 40000-50000 of 50000
+  -> No "more content" message (last chunk)
+```
+
+**UTF-8 boundary handling at offsets:**
+
+When seeking to a byte offset that lands in the middle of a
+multi-byte UTF-8 character:
+- The tool skips forward to the next valid character boundary
+- This means a few bytes at the start of a chunk may be skipped
+- For ASCII-only files, this never occurs
+
 ### Usage Examples
 
 **Read small file:**
 ```
 You: Show me the contents of src/main.rs in my-project
 
-Claude: [Executes read_file with session="my-project", file_path="/src/main.rs"]
-Shows full file contents with syntax highlighting (no warning)
+Claude: [Executes read_file with session="my-project",
+  file_path="/src/main.rs"]
+Shows full file with syntax highlighting (no warning)
 ```
 
-**Read large file (truncated):**
+**Read large file with offset pagination:**
 ```
 You: Show me the database migration file in openemr-main
 
-Claude: [Executes read_file with file_path="/sql/icd9-codes.sql"]
-WARNING: FILE TRUNCATED - showing first 20,000 characters (10.4% of 634KB file)
-Suggests using search_code to find specific content
+Claude: [Executes read_file with file_path="/sql/big.sql"]
+WARNING: FILE TRUNCATED - showing first 20,000 characters (3.2%)
+"Use offset=20000 to read next chunk."
+
+You: Continue reading
+
+Claude: [Executes read_file with file_path="/sql/big.sql",
+  offset=20000]
+Shows bytes 20000-40000 with "Use offset=40000" hint
 ```
 
-**UTF-8 handling:**
+**Read specific section of a large file:**
 ```
-You: Read the file with Chinese comments in my-project
+You: Read bytes 50000-55000 of the large config file
 
-Claude: [Executes read_file]
-Handles multi-byte characters safely, no broken characters at truncation point
+Claude: [Executes read_file with file_path="/config/big.yaml",
+  offset=50000, length=5000]
+Shows bytes 50000-55000, indicates if more content remains
 ```
 
 **Binary file error:**
@@ -1208,23 +1411,32 @@ Handles multi-byte characters safely, no broken characters at truncation point
 You: Read the image file in my-project
 
 Claude: [Executes read_file]
-Error: File contains non-UTF-8 data (binary file). Cannot display in MCP response.
+Error: File contains non-UTF-8 data (binary file).
+Cannot display in MCP response.
 ```
 
 ### Best Practices
 
-1. **Use for small-to-medium files:** Under 20k characters (no truncation)
-2. **Use search_code for large files:** Find relevant sections first
-3. **Check the warning:** If truncated, use search_code or preview_chunk
-4. **For full content:** Use bash tools (cat, less) for files >20k chars
-5. **Verify file exists:** Check search results or list_dir before reading
+1. **Use for small-to-medium files:** Under 20k characters reads
+   in one shot with no truncation
+2. **Use offset for large files:** Read incrementally rather than
+   trying to increase the limit
+3. **Use search_code first:** For large files, search for relevant
+   sections rather than reading the entire file
+4. **Check the offset hint:** When truncated, the response includes
+   the exact offset value to continue reading
+5. **Verify file exists:** Check search results or list_dir before
+   reading
+6. **Adjust length for precision:** Use smaller `length` values
+   (e.g. 5000) to read specific sections of interest
 
 ### Comparison with Alternatives
 
 **When to use read_file:**
-- File is under 20,000 characters
+- File is under 20,000 characters (reads in one shot)
 - You need syntax-highlighted display
 - File was found via search_code or list_dir
+- You need to read a specific byte range of a large file
 
 **When to use alternatives:**
 - **search_code:** Find specific content in large files

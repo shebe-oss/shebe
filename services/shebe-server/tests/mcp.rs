@@ -8,5 +8,6 @@ mod common;
 mod mcp {
     pub mod find_references_tests;
     pub mod handler_tests;
+    pub mod pagination_tests;
     pub mod protocol_tests;
 }

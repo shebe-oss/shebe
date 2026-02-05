@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Cursor-based pagination for `list_dir` MCP tool
+  - Opaque base64-encoded cursor parameter for page traversal
+  - Session fingerprint for staleness detection (rejects cursors after reindex)
+  - Sort mode validation ensures consistency across pages
+  - Truncation warning shown on first page only
+  - New `pagination` module (`mcp/pagination.rs`) with `ListDirCursor`
+- Offset-based pagination for `read_file` MCP tool
+  - `offset` and `length` parameters for byte-range reads
+  - UTF-8 boundary safety at seek position and truncation point
+  - Response includes next offset hint when more content remains
+
+### Changed
+- Version bump to 0.5.9-rc
+- Added `base64` 0.22 dependency for cursor encoding
+- Updated `list_dir` range display ("showing 101-200" replaces count)
+- Updated `get_server_info` tool descriptions to mention pagination
+- Updated `mcp-tools-reference.md` with pagination examples and workflows
+
 ## [0.5.8] - 2026-02-03
 
 ### Changed
