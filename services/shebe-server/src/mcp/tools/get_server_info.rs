@@ -43,9 +43,9 @@ impl GetServerInfoHandler {
         output.push_str("- index_repository: Index a repository (synchronous)\n");
         output.push_str("- get_server_info: Show server version (this tool)\n");
         output.push_str("- show_shebe_config: Show current configuration\n");
-        output.push_str("- read_file: Read full file contents from session\n");
+        output.push_str("- read_file: Read file contents (supports offset pagination)\n");
         output.push_str("- delete_session: Delete session and all data\n");
-        output.push_str("- list_dir: List all files in session\n");
+        output.push_str("- list_dir: List files in session (supports cursor pagination)\n");
         output.push_str("- find_file: Find files by pattern (glob/regex)\n");
         output.push_str("- find_references: Find all references to a symbol\n");
         output.push_str("- preview_chunk: Show N lines before/after search result chunk\n");

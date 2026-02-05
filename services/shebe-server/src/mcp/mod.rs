@@ -7,6 +7,7 @@
 
 pub mod error;
 pub mod handlers;
+pub mod pagination;
 pub mod protocol;
 pub mod server;
 pub mod tools;
