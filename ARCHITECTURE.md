@@ -2,9 +2,9 @@
 
 **Content Search for Code - Developer's Guide to the Codebase**
 
-**Version:** 0.5.8 <br>
-**Updated:** 2026-02-03 <br>
-**Status:** 14 MCP Tools, 10 CLI Commands, 397 Tests (Production Ready)
+**Version:** 0.5.9-rc <br>
+**Updated:** 2026-07-13 <br>
+**Status:** 14 MCP Tools, 10 CLI Commands, 581 Tests (Production Ready)
 
 
 > **Purpose:** This document helps you understand where to find code and how to make changes.
@@ -37,7 +37,7 @@ Shebe is an **MCP-first RAG service** that provides BM25 full-text search for co
                                      |
                                      v
                     +---------------------------------------+
-                    |  ~/.local/state/shebe/sessions/       |
+                    |  ~/.local/share/shebe/sessions/       |
                     |  (Tantivy indexes + session metadata) |
                     +---------------------------------------+
 ```
@@ -86,6 +86,7 @@ shebe/                         # Repository root
 |   |   |   |   +-- validator.rs # Metadata validation
 |   |   |   +-- search/        # Search
 |   |   |   |   +-- bm25.rs    # BM25 service
+|   |   |   |   +-- query.rs   # Query preprocessing
 |   |   |   +-- indexer/       # Indexing pipeline
 |   |   |       +-- chunker.rs # UTF-8 safe chunking
 |   |   |       +-- walker.rs  # File traversal
@@ -94,11 +95,13 @@ shebe/                         # Repository root
 |   |   +-- mcp/               # MCP adapter (depends on core)
 |   |   |   +-- mod.rs         # MCP module root
 |   |   |   +-- server.rs      # Stdio event loop
-|   |   |   +-- handlers.rs    # Protocol routing
+|   |   |   +-- handlers.rs    # Protocol routing, tool registration
 |   |   |   +-- protocol.rs    # JSON-RPC types
 |   |   |   +-- transport.rs   # Stdio transport
 |   |   |   +-- error.rs       # MCP error types
-|   |   |   +-- tools/         # 14 tool handlers
+|   |   |   +-- pagination.rs  # Cursor encoding (list_dir)
+|   |   |   +-- utils.rs       # Response size limits, helpers
+|   |   |   +-- tools/         # 14 tool handlers (+ handler trait, registry)
 |   |   |
 |   |   +-- cli/               # CLI adapter (depends on core)
 |   |       +-- mod.rs         # CLI entry, Cli/Commands structs
@@ -113,7 +116,7 @@ shebe/                         # Repository root
 |   |           +-- completions.rs # Shell completions
 |   |
 |   +-- tests/                 # Integration tests
-|   +-- Cargo.toml             # 16 prod deps (incl. clap, colored)
+|   +-- Cargo.toml             # 20 prod deps (incl. clap, colored, base64)
 +-- docs/
 |   +-- Performance.md         # Benchmarks
 |   +-- guides/                # User guides
@@ -241,15 +244,15 @@ async fn main() {
 
 **Trade-off:** Misses semantic similarity
 
-### Why MCP-Only?
+### Why MCP-First (No HTTP)?
 
-**Decision:** Single binary with MCP interface only (v0.6.0)
+**Decision:** MCP stdio server plus CLI, no HTTP server (since v0.5.x)
 
 **Rationale:**
 - MCP provides all required functionality (14 tools)
-- Single binary deployment, fewer dependencies
-- Primary use case is Claude Code integration
-- Less code to maintain and test
+- Primary use case is coding agent integration (Claude Code, Zed)
+- CLI reuses the same core/ logic for shell and script access
+- No HTTP server means fewer dependencies and less code to maintain
 
 **Trade-off:** No HTTP/REST API access
 
@@ -297,21 +300,24 @@ async fn main() {
 2. **UTF-8:** Never split multi-byte chars
 3. **Sessions:** All ops scoped to session
 4. **Line length:** Max 120 chars
-5. **Tests:** All 397 must pass (100% success rate)
+5. **Tests:** All 581 must pass (100% success rate)
 6. **Schema:** v3 with repository_path and last_indexed_at fields
 
 ### Storage Layout
 
 ```
-~/.local/state/shebe/sessions/
+~/.local/share/shebe/sessions/    # XDG data dir
 +-- {session-id}/
     +-- meta.json      # Metadata
     +-- tantivy/       # Index
 ```
 
+Logs and progress files live separately in the XDG state dir
+(`~/.local/state/shebe/`). See `src/core/xdg.rs` for path resolution.
+
 **INVARIANT:** `meta.json` and Tantivy must sync
 
-### Tantivy Schema (v2)
+### Tantivy Schema (v3)
 
 ```rust
 Schema {
@@ -328,69 +334,78 @@ Schema {
 **INVARIANTS:**
 - `file_path + chunk_index` = unique key
 - `chunk_index` must be INDEXED for preview_chunk queries
-- Schema version tracked in SessionMetadata
+- Schema version tracked in SessionMetadata (`SCHEMA_VERSION = 3` in
+  `src/core/storage/tantivy.rs`)
+
+**Version history:** v1 initial; v2 made `chunk_index` INDEXED (preview_chunk);
+v3 added `repository_path`, `last_indexed_at` and patterns to SessionMetadata
+(the Tantivy field set itself is unchanged since v2).
 
 ---
 
 ## Dependencies
 
-16 production crates:
+20 production crates:
 
-| Crate               | Purpose       | Why              |
-|---------------------|---------------|------------------|
-| tantivy 0.22        | BM25          | Pure Rust        |
-| tokio 1.x           | Async         | Standard         |
-| serde/serde_json    | JSON          | API              |
-| walkdir             | Files         | Simple           |
-| glob                | Patterns      | Familiar         |
-| regex               | Pattern match | File discovery   |
-| thiserror           | Errors        | Derive           |
-| tracing*            | Logs          | Async            |
-| toml                | Config        | Config files     |
-| chrono              | Timestamps    | Metadata         |
-| async-trait         | Traits        | MCP              |
-| dirs                | XDG paths     | Cross-platform   |
-| once_cell           | Lazy statics  | Patterns         |
-| clap 4              | CLI parsing   | Derive, env      |
-| clap_complete       | Completions   | bash/zsh/fish    |
-| colored             | Terminal      | NO_COLOR aware   |
+| Crate               | Purpose       | Why                          |
+|---------------------|---------------|------------------------------|
+| tantivy 0.22        | BM25          | Pure Rust                    |
+| oneshot >=0.1.12    | Tantivy dep   | Pinned: use-after-free fix   |
+| tokio 1.x           | Async         | Standard                     |
+| serde/serde_json    | JSON          | API                          |
+| base64 0.22         | Encoding      | Pagination cursors           |
+| walkdir             | Files         | Simple                       |
+| glob                | Patterns      | Familiar                     |
+| regex               | Pattern match | File discovery               |
+| thiserror           | Errors        | Derive                       |
+| tracing*            | Logs          | Async                        |
+| toml                | Config        | Config files                 |
+| chrono              | Timestamps    | Metadata                     |
+| async-trait         | Traits        | MCP                          |
+| dirs                | XDG paths     | Cross-platform               |
+| once_cell           | Lazy statics  | Patterns                     |
+| clap 4              | CLI parsing   | Derive, env                  |
+| clap_complete       | Completions   | bash/zsh/fish                |
+| colored             | Terminal      | NO_COLOR aware               |
 
 ---
 
 ## Testing
 
-397 tests in 6 categories:
+581 tests across 6 test binaries (plus 3 skipped doc examples), spanning:
 
-1. Unit (~215): Module logic
-2. Integration (~102): E2E
-3. Session (24): Mgmt
-4. MCP (13): Protocol
-5. UTF-8 (19): Safety
-6. Doc (3 ignored): Examples
+1. Unit: Module logic (inline `#[cfg(test)]` modules)
+2. Integration: E2E scenarios in `tests/`
+3. Session: Management and isolation
+4. MCP: Protocol compliance (JSON-RPC, notifications)
+5. UTF-8: Chunking safety (emoji, CJK, multi-byte)
+6. Pagination: Cursor and offset behavior (v0.5.9)
 
 **Focus:** UTF-8, errors, protocol, isolation
 
-**Coverage:** 86.76% line coverage (validated with cargo-llvm-cov)
+**Coverage:** 84.77% line coverage via cargo tarpaulin (CI enforces 70% minimum)
 
 ---
 
 ## Common Tasks
 
-```bash
-cd services/shebe-server/
+Preferred: Makefile targets from the repository root (run inside the
+docker-dev container for CI parity):
 
-# Tests
-cargo test
+```bash
+make test        # cargo nextest (581 tests)
+make fmt         # Format
+make clippy      # Zero warnings
+make check       # Quick compile check
+make shell       # Interactive container shell
+```
+
+Direct cargo (from `services/shebe-server/`, e.g. inside `make shell`):
+
+```bash
 cargo test preview_chunk
 cargo test -- --nocapture
-
-# Quality
-cargo fmt
-cargo clippy  # Zero warnings
-cargo check
-
-# Run MCP server
-cargo run --bin shebe-mcp
+cargo run --bin shebe-mcp   # Run MCP server
 ```
 
 ---
@@ -405,9 +420,9 @@ cargo run --bin shebe-mcp
 | index_repository   | Core      | Index repository for search                  | 1,928-11,210 files/sec      |
 | get_server_info    | Core      | Server version and capabilities              | <5ms                        |
 | show_shebe_config  | Core      | Display current configuration                | <5ms                        |
-| read_file          | Ergonomic | Read file with auto-truncation               | <10ms, 20KB limit           |
+| read_file          | Ergonomic | Read file, offset/length pagination          | <10ms, 20k chars/read       |
 | delete_session     | Ergonomic | Delete session with confirmation             | <10ms                       |
-| list_dir           | Ergonomic | List directory contents with pagination      | <10ms, 500 file limit       |
+| list_dir           | Ergonomic | List directory, cursor pagination            | <10ms, 100/page (500 max)   |
 | find_file          | Ergonomic | Find files by glob/regex patterns            | <10ms                       |
 | find_references    | Ergonomic | Find symbol references with confidence       | <500ms typical              |
 | preview_chunk      | Ergonomic | Show chunk context (v0.3.0: schema v2 fix)   | <5ms                        |
@@ -460,10 +475,10 @@ ShebeError -> McpError -> JSON-RPC error
 ---
 
 **Document Status:** Living document
-**Version:** 0.5.8 (14 MCP tools, 10 CLI commands, 397 tests)
-**Updated:** 2026-02-03
+**Version:** 0.5.9-rc (14 MCP tools, 10 CLI commands, 581 tests)
+**Updated:** 2026-07-13
 **Performance:** Validated with 30/30 test scenarios (100% success rate)
 - **Indexing:** 1,928-11,210 files/sec (Istio: 5,605 files in 0.5s, OpenEMR: 6,364 files in 3.3s)
 - **Search:** 2ms latency, 210-650 tokens/query, 11 file types in single query
 - **Test repositories:** Istio (Go-heavy, 5,605 files) and OpenEMR (PHP polyglot, 6,364 files)
-- **Coverage:** 86.76% line coverage (44 source files, ~7,500 LOC)
+- **Coverage:** 84.77% line coverage via tarpaulin (56 source files, ~17.5k LOC)

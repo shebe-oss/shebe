@@ -1,7 +1,7 @@
 # Shebe CI/CD Pipeline
 
-**Version:** 2.0
-**Updated:** 2026-01-24
+**Version:** 2.1
+**Updated:** 2026-07-13
 
 This document describes the CI/CD pipeline for building, testing and releasing Shebe.
 
@@ -24,13 +24,16 @@ the previous bash scripts with a centralized, tested binary.
 +------------------------------------------------------------------+
 |                         GitLab CI                                |
 |                                                                  |
-|  STAGE 1: test                                                   |
-|  +-----------+                                                   |
-|  | test:shebe|  cargo fmt, clippy, nextest                       |
+|  STAGE: test                                                     |
+|  +-----------+     +----------------+                            |
+|  | test:shebe|     | coverage:shebe |  (main merges)             |
+|  | fmt,      |     | tarpaulin,     |                            |
+|  | clippy,   |     | 70% threshold  |                            |
+|  | nextest   |     +----------------+                            |
 |  +-----------+                                                   |
 |        |                                                         |
 |        v                                                         |
-|  STAGE 2: build (parallel matrix)                                |
+|  STAGE: build (manual on tags, parallel matrix)                  |
 |  +------------------+     +------------------+                    |
 |  | build:linux      |     | build:linux      |                    |
 |  | (glibc)          |     | (musl + mcpb)    |                    |
@@ -40,19 +43,19 @@ the previous bash scripts with a centralized, tested binary.
 |           +-------+----------------+                              |
 |                   |                                               |
 |                   v                                               |
-|           +---------------+                                       |
-|           | build:macos   |---> triggers GitHub Actions           |
-|           +-------+-------+                                       |
-|                   |                                               |
-|                   v                                               |
-|  STAGE 3: release (manual)                                       |
+|  STAGE: release (manual)                                          |
+|  +---------------+                                                |
+|  | build:macos   |---> triggers GitHub Actions                    |
+|  +-------+-------+     (repository_dispatch)                      |
+|          |                                                        |
+|          v                                                        |
 |  +---------------+                                                |
 |  | release:shebe | rci release gitlab                             |
 |  | [play button] | rci release github (draft)                     |
 |  +-------+-------+                                                |
 |          |                                                        |
 |          v                                                        |
-|  STAGE 4: publish (manual)                                        |
+|  STAGE: publish (manual)                                          |
 |  +--------------------+                                           |
 |  | publish:mcp-registry | rci mcpb publish                        |
 |  | [play button]        |                                         |
@@ -65,11 +68,17 @@ the previous bash scripts with a centralized, tested binary.
 +------------------------------------------------------------------+
 |                       GitHub Actions                             |
 |                                                                  |
+|  release-macos.yml:                                              |
 |  +-------------------+     +-------------------+                  |
 |  | build (matrix)    |     | release           |                  |
 |  | - x86_64-darwin   | --> | - Upload artifacts|                  |
 |  | - aarch64-darwin  |     | - Publish release |                  |
 |  +-------------------+     +-------------------+                  |
+|                                                                  |
+|  test-coverage.yml (push to main):                               |
+|  +-------------------+                                           |
+|  | coverage          |  tarpaulin --fail-under 70                |
+|  +-------------------+                                           |
 +------------------------------------------------------------------+
                                   |
                                   v
@@ -134,9 +143,22 @@ Runs on merge requests and main branch pushes when Rust files change.
 
 ---
 
+**Job:** `coverage:shebe`
+
+Runs coverage analysis on merges to main.
+
+| Attribute | Value |
+|-----------|-------|
+| Image | rust-debian (slim-trixie) |
+| Tool | `cargo tarpaulin` |
+| Threshold | 70% minimum line coverage |
+| Artifacts | Cobertura XML coverage report |
+
+---
+
 ### Stage 3: build
 
-**Job:** `build:linux`
+**Job:** `build:linux` (manual trigger on version tags)
 
 Builds Linux release binaries using parallel matrix strategy.
 
@@ -163,6 +185,8 @@ rci mcpb create --service-dir services/shebe-server --publish-package-registry
 **Job:** `build:macos`
 
 Triggers GitHub Actions to build macOS binaries. Runs after `build:linux`.
+Note: this job is assigned to the `release` stage (moved there in v0.5.7) so
+Linux artifacts are ready before the GitHub-side release job consumes them.
 
 **Actions:**
 - Extracts version from `Cargo.toml`
@@ -259,6 +283,20 @@ The script:
 
 ---
 
+## GitHub Actions: Coverage Workflow
+
+**File:** `.github/workflows/test-coverage.yml`
+
+Independent coverage check on the GitHub mirror.
+
+| Attribute | Value |
+|-----------|-------|
+| Trigger | Push to `main` |
+| Runner | `ubuntu-latest` |
+| Command | `cargo tarpaulin --all-features --workspace --fail-under 70` |
+
+---
+
 ## CI/CD Variables
 
 ### GitLab CI/CD Variables
@@ -321,16 +359,16 @@ shebe-{version}-{os}-{arch}[-{variant}].tar.gz
 
 | Platform | Artifact Name |
 |----------|---------------|
-| Linux x86_64 (glibc) | `shebe-v0.6.0-linux-x86_64.tar.gz` |
-| Linux x86_64 (musl) | `shebe-v0.6.0-linux-x86_64-musl.tar.gz` |
-| macOS Intel | `shebe-v0.6.0-darwin-x86_64.tar.gz` |
-| macOS Apple Silicon | `shebe-v0.6.0-darwin-aarch64.tar.gz` |
-| MCP Bundle | `shebe-mcp-v0.6.0.mcpb` |
+| Linux x86_64 (glibc) | `shebe-v0.5.8-linux-x86_64.tar.gz` |
+| Linux x86_64 (musl) | `shebe-v0.5.8-linux-x86_64-musl.tar.gz` |
+| macOS Intel | `shebe-v0.5.8-darwin-x86_64.tar.gz` |
+| macOS Apple Silicon | `shebe-v0.5.8-darwin-aarch64.tar.gz` |
+| MCP Bundle | `shebe-mcp-v0.5.8.mcpb` |
 
 ### Tarball Contents
 
 ```
-shebe-v0.6.0-linux-x86_64/
+shebe-v0.5.8-linux-x86_64/
   shebe-mcp    # MCP server binary
   shebe        # CLI binary
 ```
@@ -345,9 +383,9 @@ shebe-v0.6.0-linux-x86_64/
 2. **Update CHANGELOG.md** with release notes
 3. **Create and push tag:**
    ```bash
-   git tag v0.6.0
-   git push origin v0.6.0
-   git push github v0.6.0  # Mirror to GitHub
+   git tag v0.5.8
+   git push origin v0.5.8
+   git push github v0.5.8  # Mirror to GitHub
    ```
 
 4. **Pipeline executes:**
@@ -395,8 +433,8 @@ curl -H "Authorization: Bearer $SHEBE_GITHUB_TOKEN" \
   https://api.github.com/repos/shebe-oss/shebe/releases
 
 # Verify tag exists on both remotes
-git ls-remote origin --tags v0.6.0
-git ls-remote github --tags v0.6.0
+git ls-remote origin --tags v0.5.8
+git ls-remote github --tags v0.5.8
 
 # Test version extraction locally
 grep '^version' services/shebe-server/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/'

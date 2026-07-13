@@ -27,9 +27,10 @@ function names, API calls, error messages. [BM25 excels at this][research-2].
   - 200-700 tokens/query
   - Full UTF-8 support (emoji, CJK, special characters)
   - 14 MCP tools for coding agents (claude, codex etc) ([reference](./docs/guides/mcp-tools-reference.md))
+  - Pagination for large results: cursor-based `list_dir`, offset-based `read_file`
 
 **Size:**
-  - ~10k lines of Rust source code (and another ~10k LoC test code). 
+  - ~17.5k lines of Rust in src/ (including inline unit tests) plus ~5.2k lines of integration tests.
   - 2 binaries (cli and mcp) each at ~8MB.
 
 **Positioning:**
@@ -88,8 +89,8 @@ supported platforms and troubleshooting.
 
 ```bash
 export SHEBE_VERSION=v0.5.8
-curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz"
-curl -LO "https://github.com/shebe-oss/shebe-releases/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256"
+curl -LO "https://github.com/shebe-oss/shebe/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz"
+curl -LO "https://github.com/shebe-oss/shebe/releases/download/${SHEBE_VERSION}/shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256"
 
 sha256sum -c shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz.sha256
 tar -xzf shebe-${SHEBE_VERSION}-linux-x86_64.tar.gz
@@ -209,17 +210,17 @@ to change -- completing the full impact analysis in ~1 minute.
 
 ### Quick Reference
 
-| Variable           | Default                | Description                                  |
-|--------------------|------------------------|----------------------------------------------|
-| `SHEBE_INDEX_DIR`  | `~/.local/state/shebe` | Session storage location                     |
-| `SHEBE_CHUNK_SIZE` | `512`                  | Characters per chunk (100-2000)              |
-| `SHEBE_OVERLAP`    | `64`                   | Overlap between chunks                       |
-| `SHEBE_DEFAULT_K`  | `10`                   | Default search results count                 |
-| `SHEBE_MAX_K`      | `100`                  | Maximum search results allowed               |
+| Variable           | Default                         | Description                         |
+|--------------------|---------------------------------|-------------------------------------|
+| `SHEBE_DATA_DIR`   | `~/.local/share/shebe`          | Session storage location            |
+| `SHEBE_CHUNK_SIZE` | `512`                           | Characters per chunk                |
+| `SHEBE_OVERLAP`    | `64`                            | Overlap between chunks              |
+| `SHEBE_DEFAULT_K`  | `10`                            | Default search results count        |
+| `SHEBE_MAX_K`      | `100`                           | Maximum search results allowed      |
 
 ### Configuration File
 
-Create `shebe.toml` in your working directory or `~/.config/shebe/shebe.toml`:
+Create `~/.config/shebe/config.toml` (or a legacy `shebe.toml` in your working directory):
 
 ```toml
 [indexing]
@@ -294,10 +295,10 @@ For detailed troubleshooting, see [docs/guides/mcp-setup-guide.md](./docs/guides
 
 ## Project Status
 
-**Version:** v0.5.X  
+**Version:** v0.5.9-rc (latest release: v0.5.8)  
 **Status:** Release Candidate  
-**Testing:** 76% coverage  
-**Next:** Pagination for `list_dir` and `read_file` when more than 500 files match a search term
+**Testing:** 581 tests passing, 84.77% line coverage  
+**Next:** MCP Registry secondary directories and Zed extension publication
 
 See [CHANGELOG.md](./CHANGELOG.md) for version history.
 
