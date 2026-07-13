@@ -1,7 +1,7 @@
 # Shebe Installation Guide
 
-**Version:** 0.5.8
-**Last Updated:** 2026-02-03
+**Version:** 0.5.8 (latest release)
+**Last Updated:** 2026-07-13
 
 ---
 
@@ -95,8 +95,8 @@ Search for "Shebe" in Zed's extension panel, or add to
 
 ### Other Editors
 
-See the [shebe-releases](https://github.com/shebe-oss/shebe-releases)
-repository for VS Code and other editor extensions.
+See the [shebe-oss GitHub organization](https://github.com/shebe-oss)
+for VS Code and other editor extensions.
 
 ---
 
@@ -130,15 +130,20 @@ git clone https://gitlab.com/shebe-oss/shebe.git
 cd shebe
 
 # Build release binaries (uses Docker for consistency)
-make mcp-build
+make shebe-build
 
-# Install to /usr/local/bin/ (or ~/.local/bin/)
-make mcp-install
+# Install to /usr/local/lib/ with symlinks in /usr/local/bin/
+make shebe-install
+
+# Optional: install the config template to ~/.config/shebe/
+make shebe-install-config
 
 # Verify installation
 which shebe-mcp
 shebe --version
 ```
+
+To remove binaries installed this way, run `make shebe-uninstall`.
 
 ### Alternative: Direct Cargo Build
 
@@ -167,6 +172,8 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | shebe-mcp | 
 ```
 
 Expected: JSON response with server capabilities and 14 MCP tools.
+
+From a source checkout, `make shebe-test` runs the same MCP initialize check.
 
 ---
 

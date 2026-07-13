@@ -7,7 +7,13 @@ This guide covers configuration options for `shebe-mcp`, the MCP server that int
 Shebe MCP works out-of-the-box with sensible defaults. For most users, no configuration is needed:
 
 ```bash
-# Add to Claude Code MCP settings (~/.config/claude-code/config.json)
+# Register with Claude Code
+claude mcp add shebe -- shebe-mcp
+```
+
+Or add to your MCP client's server configuration manually:
+
+```json
 {
   "mcpServers": {
     "shebe": {
@@ -74,7 +80,10 @@ These settings control how Shebe chunks and indexes repository files.
 
 **Default include patterns:** `*.rs`, `*.toml`, `*.md`, `*.txt`, `*.php`, `*.js`, `*.ts`, `*.py`, `*.go`, `*.java`, `*.c`, `*.cpp`, `*.h`
 
-**Default exclude patterns:** `**/node_modules/**`, `**/target/**`, `**/vendor/**`, `**/.git/**`, `**/build/**`, `**/__pycache__/**`, `**/dist/**`, plus all binary files (images, audio, video, archives, executables, fonts). See complete list in [config.rs](services/shebe-server/src/config.rs).
+**Default exclude patterns:** `**/node_modules/**`, `**/target/**`, `**/vendor/**`, `**/.git/**`,
+`**/build/**`, `**/__pycache__/**`, `**/dist/**`, `**/.next/**`, plus all binary files
+(images, audio, video, documents, archives, executables, fonts).
+See complete list in [config.rs](services/shebe-server/src/core/config.rs).
 
 ### Storage Options
 
@@ -103,13 +112,24 @@ Controls concurrency and timeouts.
 | toml: `max_concurrent_indexes`<br>env: `SHEBE_MAX_CONCURRENT_INDEXES` | integer | `1`      | Maximum number of repositories that can be indexed simultaneously. Set to `1` to prevent<br>CPU/memory exhaustion. Increase only on powerful machines with sufficient RAM (2GB+ per<br>concurrent index). |
 | toml: `request_timeout_sec`<br>env: `SHEBE_REQUEST_TIMEOUT_SEC`       | integer | `300`    | Timeout in seconds for indexing and search requests. Indexing large repositories (>10k files)<br>may need longer timeouts. Search queries typically complete in milliseconds.                             |
 
-### Logging Options
+### Logging
 
-Controls diagnostic output (written to stderr, not stdout, to preserve MCP protocol on stdout).
+Diagnostic output is written to stderr (not stdout, to preserve the MCP protocol on stdout)
+at a fixed `info` level. Log verbosity is not currently configurable via TOML or
+environment variables.
 
-| Option                                      | Type   | Default  | Description                                                                                                                                                                                                         |
-|---------------------------------------------|--------|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| toml: `log_level`<br>env: `SHEBE_LOG_LEVEL` | string | `"info"` | Logging verbosity level. Options: `trace` (very verbose, development), `debug` (detailed<br>diagnostics), `info` (normal operations), `warn` (problems only), `error` (critical issues only).<br>Logs go to stderr. |
+### Fixed Limits (Not Configurable)
+
+Some MCP tool limits are hardcoded constants, chosen to respect the MCP response size
+limit (~25k tokens). They cannot be changed via TOML or environment variables:
+
+| Limit                        | Value              | Applies To                                    |
+|------------------------------|--------------------|-----------------------------------------------|
+| `list_dir` default page size | 100 entries        | Entries returned when no `limit` is given     |
+| `list_dir` max page size     | 500 entries        | Hard cap per page; use `cursor` to paginate   |
+| `read_file` max read size    | 20,000 characters  | Per read; use `offset`/`length` to paginate   |
+
+See [mcp/utils.rs](services/shebe-server/src/mcp/utils.rs) for the constant definitions.
 
 ## Example Configurations
 
@@ -203,24 +223,6 @@ exclude_patterns = [
     "**/node_modules/**",
     "**/__pycache__/**",
 ]
-```
-
-### Debug Logging
-
-Enable verbose logging for troubleshooting:
-
-```bash
-export SHEBE_LOG_LEVEL="debug"
-shebe-mcp
-```
-
-Or via TOML:
-
-```toml
-# ~/.config/shebe/config.toml
-
-[server]
-log_level = "debug"
 ```
 
 ## Common Configuration Tasks
