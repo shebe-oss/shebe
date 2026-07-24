@@ -47,7 +47,7 @@ static MULTI_COLON_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\w+:\w+:\w+
 /// assert_eq!(preprocess_query("/users/{id}", false), "\"/users/\\{id\\}\"");
 ///
 /// // Normal mode: Multi-colon patterns are quoted
-/// assert_eq!(preprocess_query("negusa:calendar:read", false), "\"negusa:calendar:read\"");
+/// assert_eq!(preprocess_query("myapp:calendar:read", false), "\"myapp:calendar:read\"");
 ///
 /// // Literal mode: ALL special characters are escaped
 /// assert_eq!(preprocess_query("file:test", true), "file\\:test");
@@ -267,8 +267,8 @@ mod tests {
     #[test]
     fn test_quote_three_part_colon() {
         assert_eq!(
-            preprocess_query("negusa:calendar:read", false),
-            "\"negusa:calendar:read\""
+            preprocess_query("myapp:calendar:read", false),
+            "\"myapp:calendar:read\""
         );
     }
 
@@ -535,8 +535,8 @@ mod tests {
     fn test_literal_multi_colon_no_quoting() {
         // In literal mode, multi-colon patterns are NOT auto-quoted, just escaped
         assert_eq!(
-            preprocess_query("negusa:calendar:read", true),
-            "negusa\\:calendar\\:read"
+            preprocess_query("myapp:calendar:read", true),
+            "myapp\\:calendar\\:read"
         );
     }
 

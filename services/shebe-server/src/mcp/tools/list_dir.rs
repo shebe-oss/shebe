@@ -125,7 +125,7 @@ impl ListDirHandler {
                         entry.size_bytes = metadata.len();
                     }
                 }
-                files.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+                files.sort_by_key(|f| std::cmp::Reverse(f.size_bytes));
             }
             SortOrder::Indexed => {
                 // Keep insertion order (effectively indexed order)

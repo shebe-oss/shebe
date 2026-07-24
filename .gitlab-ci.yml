@@ -27,7 +27,7 @@ stages:
 
 default:
   interruptible: true
-  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260123-b1.88-alpine3.22
+  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260724-b1.97-alpine3.22
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/.cargo
@@ -159,7 +159,7 @@ coverage:shebe:
   stage: test
   needs: []
   timeout: 20m
-  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260123-b1.88-slim-trixie
+  image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260724-b1.97-slim-trixie
   rules: *shebe-rules-ci
   before_script:
     - *start-sccache
@@ -199,9 +199,9 @@ build:linux:
   stage: build
   parallel:
     matrix:
-      - BUILD_IMAGE: lang/rust-debian:20260123-b1.88-slim-trixie
+      - BUILD_IMAGE: lang/rust-debian:20260724-b1.97-slim-trixie
         ARTIFACT_SUFFIX: linux-x86_64
-      - BUILD_IMAGE: lang/rust-alpine:20260123-b1.88-alpine3.22
+      - BUILD_IMAGE: lang/rust-alpine:20260724-b1.97-alpine3.22
         ARTIFACT_SUFFIX: linux-x86_64-musl
   timeout: 15m
   rules: *release-rules

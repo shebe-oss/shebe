@@ -27,7 +27,7 @@ services:
   # Primary development container (Debian/glibc)
   # Use for: tests, linting, formatting, debug builds
   shebe-dev:
-    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260123-b1.88-slim-trixie
+    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-debian:20260724-b1.97-slim-trixie
     container_name: shebe-dev
     working_dir: /workspace
     volumes:
@@ -53,7 +53,7 @@ services:
   # Use for: testing sccache, release builds, MCPB creation
   # Mirrors CI environment (uses sccache instead of local cargo cache volumes)
   shebe-dev-musl:
-    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260123-b1.88-alpine3.22
+    image: registry.gitlab.com/rhobimd-oss/cicd/lang/rust-alpine:20260724-b1.97-alpine3.22
     container_name: shebe-dev-musl
     working_dir: /workspace
     volumes:

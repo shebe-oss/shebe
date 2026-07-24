@@ -45,7 +45,7 @@ pub struct ReferencesArgs {
 }
 
 /// Symbol type for pattern matching
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
 pub enum SymbolTypeArg {
     /// Match function/method calls (symbol(), .symbol())
     Function,
@@ -56,13 +56,8 @@ pub enum SymbolTypeArg {
     /// Same as variable
     Constant,
     /// Match all patterns (default)
+    #[default]
     Any,
-}
-
-impl Default for SymbolTypeArg {
-    fn default() -> Self {
-        Self::Any
-    }
 }
 
 /// A single reference to a symbol

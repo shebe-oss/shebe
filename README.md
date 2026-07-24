@@ -295,8 +295,8 @@ For detailed troubleshooting, see [docs/guides/mcp-setup-guide.md](./docs/guides
 
 ## Project Status
 
-**Version:** v0.5.9-rc (latest release: v0.5.8)  
-**Status:** Release Candidate  
+**Version:** v0.5.10 (latest release: v0.5.8)  
+**Status:** Production Ready  
 **Testing:** 581 tests passing, 84.77% line coverage  
 **Next:** MCP Registry secondary directories and Zed extension publication
 
